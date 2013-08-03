@@ -1,0 +1,63 @@
+
+
+/*
+func testStorage(t *testing.T, s common.Storage) {
+	wantBytes := []byte("this is a test")
+	want := bytes.NewBuffer(wantBytes)
+	id := "test"
+
+	err := s.Put(id, want)
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+
+	act := new(bytes.Buffer)
+	r, err := s.Get(id)
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+
+	_, err = io.Copy(act, r)
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+
+	if len(wantBytes) != act.Len() {
+		t.Fatalf("expected %v bytes, got %v", len(wantBytes), act.Len())
+		return
+	}
+
+	actBytes := act.Bytes()
+	for i, b := range wantBytes {
+		if b != actBytes[i] {
+			t.Fatalf("expected %v, got %v at i = %v", b, actBytes[i], i)
+			return
+		}
+	}
+
+	wantMap := map[string]common.FileInfo{
+		"test": {"test", int64(len(wantBytes))},
+	}
+	actMap, err := s.GetIndex()
+	if err != nil {
+		t.Fatal("GetIndex error:", err)
+		return
+	}
+
+	if !reflect.DeepEqual(actMap, wantMap) {
+		t.Fatalf("Indexes did not match, wanted %v, got %v", wantMap, actMap)
+	}
+}
+
+func TestInMem(t *testing.T) {
+	inmem, err := client.NewInMemory()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	testStorage(t, inmem)
+}
+*/
