@@ -1,8 +1,6 @@
 package rpc
 
 import (
-	"encoding/binary"
-	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -13,74 +11,34 @@ import (
 )
 
 const (
-	tagStreamRPC = iota
-	tagNormRPC
+	tagRPC = byte(iota)
 	tagHandshake
 )
 
-type Coder interface {
-	Encode(w io.Writer, src interface{}) error
-	Decode(r io.Reader, dst interface{}) error
-}
+type rpcClass byte
 
-type jsonCoder struct { }
-
-func (jsonCoder) Encode(w io.Writer, dst interface{}) error {
-	b, err := json.Marshal(dst)
-	if err != nil {
-		return err
-	}
-
-	err = binary.Write(w, binary.LittleEndian, int64(len(b)))
-	if err != nil {
-		return err
-	}
-
-	_, err = w.Write(b)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (jsonCoder) Decode(r io.Reader, dst interface{}) error {
-	var length int64
-	err := binary.Read(r, binary.LittleEndian, &length)
-	if err != nil {
-		return err
-	}
-
-	b := make([]byte, length)
-	_, err = io.ReadFull(r, b)
-	if err != nil {
-		return err
-	}
-
-	err = json.Unmarshal(b, dst)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
+const (
+	rpcNorm = rpcClass(iota)
+	rpcWrite
+	rpcRead
+)
 
 type method struct {
-    method reflect.Value
-    writer bool
+	method reflect.Value
+	class  rpcClass
 }
 
 type Server struct {
 	coder   Coder
 	types   map[string]reflect.Value // map of registered 'objects'
-	methods map[string]method // map of registered methods
+	methods map[string]method        // map of registered methods
 	start   chan bool
 	conns   chan net.Conn
 	rpc     *rpc.Server
 }
 
 func NewServer() *Server {
-	return NewServerWithCoder(jsonCoder{})
+	return NewServerWithCoder(defaultCoder)
 }
 
 func NewServerWithCoder(coder Coder) *Server {
@@ -104,65 +62,63 @@ func (s *Server) Close() error {
 // methods satisfying the standard library's rpc function signature will
 // be registered with an instance of that rpc server.
 //
-// The following are the different method signatures.
-//
-// Standard RPC methods:
-//  func(args t1, reply *t2) error
-// see net/rpc docs for more info.
-//
-// Streaming write methods:
-//  func(arg1 t1, arg2 t2, arg3 t3 ...) (io.Writer, error)
-//
-// Streaming read methods:
-//  func(arg1 t1, arg2 t2, arg3 t3 ...) (io.Reader, error)
+// Method signatures must fit one of the following forms. For normal rpcs that
+// do not stream, any number of arguments and return values must be defined.
+//  func RPCNorm_methodNameHere(t1, t2, t3 ... , tn) (rt1, rt2 ... rtn)
+//  func RPCRead_methodNameHere(t1, t2, t3 ... , tn) (io.ReadCloser, rt1, rt2 ... rtn)
+//  func RPCWrite_methodNameHere(t1, t2, t3 ... , tn) (io.Writer, rt1, rt2 ... rtn)
 func (s *Server) Register(name string, rcvr interface{}) error {
+	const (
+		norm_prefix  = "RPCNorm_"
+		read_prefix  = "RPCRead_"
+		write_prefix = "RPCWrite_"
+	)
+
+	refl := reflect.ValueOf(rcvr)
 	typ := reflect.TypeOf(rcvr)
+	s.types[name] = refl
+	for i := 0; i < refl.NumMethod(); i++ {
+		var (
+			mName  string
+			mClass rpcClass
+		)
 
-	if _, ok := s.types[name]; ok {
-		return fmt.Errorf("already registered %v", name)
-	}
+		getName := func(prefix string) string {
+			return strings.SplitN(typ.Method(i).Name, prefix, 2)[1]
+		}
 
-	if err := s.rpc.Register(rcvr); err != nil {
-		return err
-	}
-
-	s.types[name] = reflect.ValueOf(rcvr)
-
-    tmp := reflect.TypeOf(func() (io.Reader, io.Writer, error) { return nil, nil, nil })
-    writerTyp := tmp.Out(0)
-    readerTyp := tmp.Out(1)
-    errorTyp := tmp.Out(2)
-
-	for i := 0; i < typ.NumMethod(); i++ {
-		m := typ.Method(i)
-		if m.Type.NumOut() != 2 {
-            log.Printf("stream: method %v two return values %v", m.Name, m.Type.NumOut())
+		switch {
+		case strings.HasPrefix(typ.Method(i).Name, norm_prefix):
+			mName = getName(norm_prefix)
+			mClass = rpcNorm
+		case strings.HasPrefix(typ.Method(i).Name, read_prefix):
+			mName = getName(read_prefix)
+			mClass = rpcRead
+		case strings.HasPrefix(typ.Method(i).Name, write_prefix):
+			mName = getName(write_prefix)
+			mClass = rpcWrite
+		default:
 			continue
 		}
 
-		if m.Type.Out(1) != errorTyp {
-            log.Printf("stream: method %v should have second return type of error, got %v", m.Name, m.Type.Out(1))
-			continue
-		}
-
-        isReader := m.Type.Out(0) == readerTyp
-        isWriter := m.Type.Out(0) == writerTyp
-		if !isReader && !isWriter {
-            log.Printf("stream: method %v should have either io.Reader or io.Writer as return type", m.Name)
-			continue
-		}
-
-		s.methods[name+"."+m.Name] = method{m.Func, isWriter}
+		s.methods[name+"."+mName] = method{refl.Method(i), mClass}
 	}
 
 	return nil
 }
 
+func (s *Server) TCPListen(hostport string) error {
+	l, err := net.Listen("tcp", hostport)
+	if err != nil {
+		return err
+	}
+
+	go s.Accept(l)
+
+	return nil
+}
+
 func (s *Server) Accept(lis net.Listener) {
-	conns := make(chanListener)
-
-	go s.rpc.Accept(conns)
-
 	for {
 		conn, err := lis.Accept()
 		if err != nil {
@@ -170,23 +126,16 @@ func (s *Server) Accept(lis net.Listener) {
 		}
 
 		var tag byte
-		err = s.coder.Decode(conn, &tag)
-		if err != nil {
+
+		if err := s.coder.Decode(conn, &tag); err != nil {
 			panic(err)
 		}
 
 		switch tag {
 		case tagHandshake:
-            log.Println("handshake")
 			go s.handshake(conn)
-		case tagStreamRPC:
-            log.Println("streaming")
-			// Each streaming RPC call gets its own connection
-			go s.handleStreamRPC(conn)
-		case tagNormRPC:
-            log.Println("normal")
-			// Hand this off to the stdlib rpc library
-			conns <- conn
+		case tagRPC:
+			go s.handleRPC(conn)
 		default:
 			panic("Unrecognized message")
 		}
@@ -194,13 +143,64 @@ func (s *Server) Accept(lis net.Listener) {
 }
 
 func (s *Server) handshake(conn net.Conn) {
-	methods := make(map[string]bool)
-	for k := range s.methods {
-		methods[k] = true
+	methods := make(map[string]rpcClass)
+	for i, m := range s.methods {
+		methods[i] = m.class
 	}
 
 	err := s.coder.Encode(conn, methods)
 	if err != nil {
+		panic(err)
+	}
+}
+
+func (s *Server) handleRPC(conn net.Conn) {
+	var (
+		class      rpcClass
+		methodName string
+	)
+
+	if err := s.coder.Decode(conn, &class); err != nil {
+		panic(err)
+	}
+
+	if err := s.coder.Decode(conn, &methodName); err != nil {
+		panic(err)
+	}
+
+	_, ok := s.methods[methodName]
+	if !ok {
+		panic(fmt.Sprintf("couldn't find %v in method index", methodName))
+	}
+
+	switch class {
+	case rpcNorm:
+		s.handleNormRPC(conn, methodName)
+	default:
+		panic(fmt.Sprintf("not doing that yet: %v", class))
+	}
+}
+
+func (s *Server) handleNormRPC(conn net.Conn, methodName string) {
+	info := s.methods[methodName]
+
+	var args []interface{}
+	if err := s.coder.Decode(conn, &args); err != nil {
+		panic(err)
+	}
+
+	reflArgs := make([]reflect.Value, len(args))
+	for i, arg := range args {
+		reflArgs[i] = reflect.ValueOf(arg)
+	}
+	outs := info.method.Call(reflArgs)
+
+	rets := make([]interface{}, len(outs))
+	for i, out := range outs {
+		rets[i] = out.Interface()
+	}
+
+	if err := s.coder.Encode(conn, rets); err != nil {
 		panic(err)
 	}
 }
@@ -212,7 +212,7 @@ func (s *Server) handleStreamRPC(conn net.Conn) {
 	err := s.coder.Decode(conn, &mName)
 	if err != nil {
 		log.Println("Received malformed stream rpc, couldn't decode method name")
-        conn.Close()
+		conn.Close()
 		return
 	}
 
@@ -223,11 +223,11 @@ func (s *Server) handleStreamRPC(conn net.Conn) {
 	// decoding to reflect.New'ed pointers for each type
 
 	mth, ok := s.methods[mName]
-    if !ok {
-        log.Printf("Method %v not recognized", mName)
-        conn.Close()
-        return
-    }
+	if !ok {
+		log.Printf("Method %v not recognized", mName)
+		conn.Close()
+		return
+	}
 
 	mType := mth.method.Type()
 
@@ -251,41 +251,41 @@ func (s *Server) handleStreamRPC(conn net.Conn) {
 	// argument. Pass conn in as the first argument, and the decoded arguments
 	// as the rest.
 	outs := s.methods[mName].method.Call(args)
-	errInt := outs[1].Interface()
-	if errInt != nil {
-		err := errInt.(error)
-		log.Printf("Error on stream rpc method call %v(%v): %v", mName, args, err)
-		return
+
+	outInts := make([]interface{}, len(outs))
+	for i, o := range outs {
+		outInts[i] = o.Interface()
 	}
 
-	// TODO: Add support for writing RPCs too. This might just entail doing
-	// a type switch on outs[0] and if it's a writer, copy the other direction
-
-	// TODO: Add a byte to the protocol that specifies whether an error is
-	// being returned or a stream is coming back. For now we just assume
-	// there was no error so the client starts the receive
-    if s.methods[mName].writer {
-        o := outs[0].Interface().(io.Writer)
-        log.Println("in writer case")
+	switch s.methods[mName].class {
+	case rpcNorm:
+		err = s.coder.Encode(conn, outInts)
+		if err != nil {
+			log.Println("Error writing return arguments to client:", err)
+			return
+		}
+	case rpcWrite:
+		o := outs[0].Interface().(io.Writer)
+		log.Println("in writer case")
 		_, err = io.Copy(o, conn)
 		if err != nil {
 			log.Println("Error executing copy:", err)
 			return
 		}
-    } else {
-        o := outs[0].Interface().(io.Reader)
+	case rpcRead:
+		o := outs[0].Interface().(io.Reader)
 		_, err = io.Copy(conn, o)
 		if err != nil {
 			log.Println("Error executing copy:", err)
 			return
 		}
 
-        log.Println("in reader case")
+		log.Println("in reader case")
 
 		err = conn.Close()
 		if err != nil {
 			log.Println("Error closing connection after copy:", err)
 			return
 		}
-    }
+	}
 }
