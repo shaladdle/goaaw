@@ -12,6 +12,12 @@ type Dialer interface {
 	Dial() (net.Conn, error)
 }
 
+type TcpDialer string
+
+func (d TcpDialer) Dial() (net.Conn, error) {
+	return net.Dial("tcp", string(d))
+}
+
 type Addr struct {
 	network string
 	str     string
