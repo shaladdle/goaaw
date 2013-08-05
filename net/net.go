@@ -12,9 +12,9 @@ type Dialer interface {
 	Dial() (net.Conn, error)
 }
 
-type TcpDialer string
+type TCPDialer string
 
-func (d TcpDialer) Dial() (net.Conn, error) {
+func (d TCPDialer) Dial() (net.Conn, error) {
 	return net.Dial("tcp", string(d))
 }
 
