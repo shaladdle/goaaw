@@ -10,6 +10,7 @@ var defaultCoder Coder = gobCoder{}
 
 func init() {
 	gob.Register(rpcClass(0))
+	gob.Register(ErrNil)
 }
 
 type Coder interface {
@@ -40,5 +41,9 @@ func (gobCoder) Encode(w io.Writer, src interface{}) error {
 }
 
 func (gobCoder) Decode(r io.Reader, dst interface{}) error {
-	return gob.NewDecoder(byteReader{r}).Decode(dst)
+	if _, ok := r.(io.ByteReader); !ok {
+		return gob.NewDecoder(byteReader{r}).Decode(dst)
+	}
+
+	return gob.NewDecoder(r).Decode(dst)
 }

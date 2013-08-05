@@ -1,8 +1,8 @@
 package rpc
 
 import (
-	"encoding/gob"
 	"fmt"
+	"io"
 	"net"
 	"reflect"
 
@@ -38,25 +38,53 @@ func NewClientWithCoder(d anet.Dialer, coder Coder) (*Client, error) {
 // as both arguments and return values for normal RPCs. The return empty
 // interface is either a io.ReadCloser, an io.Writer, or a nil, depending on
 // the type of RPC.
-func (c *Client) Call(methodName string, fnargs ...interface{}) (interface{}, error) {
+func (c *Client) Call(methodName string, fnargs ...interface{}) error {
+	if class, ok := c.rpcIndex[methodName]; !ok {
+		return fmt.Errorf("could not find rpc %v", methodName)
+	} else if class != rpcNorm {
+		return fmt.Errorf("wrong rpc type, please use CallRead or CallWrite for streaming RPCs")
+	}
+
+	_, err := c.call(methodName, fnargs)
+	return err
+}
+
+func (c *Client) CallRead(methodName string, fnargs ...interface{}) (io.Reader, error) {
+	if class, ok := c.rpcIndex[methodName]; !ok {
+		return nil, fmt.Errorf("could not find rpc %v", methodName)
+	} else if class != rpcRead {
+		return nil, fmt.Errorf("wrong rpc type, is this a write or normal rpc?")
+	}
+
+	return c.call(methodName, fnargs)
+}
+
+func (c *Client) CallWrite(methodName string, fnargs ...interface{}) (io.WriteCloser, error) {
+	if class, ok := c.rpcIndex[methodName]; !ok {
+		return nil, fmt.Errorf("could not find rpc %v", methodName)
+	} else if class != rpcWrite {
+		return nil, fmt.Errorf("wrong rpc type, is this a read or normal rpc?")
+	}
+
+	return c.call(methodName, fnargs)
+}
+
+func (c *Client) call(methodName string, fnargs []interface{}) (net.Conn, error) {
 	conn, err := c.d.Dial()
 	if err != nil {
 		return nil, err
 	}
-	defer conn.Close()
 
-	switch c.rpcIndex[methodName] {
-	case rpcNorm:
-		_, err := c.handleNormRPC(methodName, conn, fnargs)
+	// Indicate that this is an RPC connection.
+	if err := c.coder.Encode(conn, tagRPC); err != nil {
 		return nil, err
-	case rpcRead:
-	case rpcWrite:
 	}
 
-	return nil, fmt.Errorf("should not reach here")
-}
+	// Send method name.
+	if err := c.coder.Encode(conn, methodName); err != nil {
+		return nil, err
+	}
 
-func (c *Client) handleNormRPC(methodName string, conn net.Conn, fnargs []interface{}) (interface{}, error) {
 	args := []interface{}{}
 	rets := []interface{}{}
 	for _, fnarg := range fnargs {
@@ -68,30 +96,14 @@ func (c *Client) handleNormRPC(methodName string, conn net.Conn, fnargs []interf
 		}
 	}
 
-	// Indicate that this is an RPC connection.
-	if err := c.coder.Encode(conn, tagRPC); err != nil {
-		return nil, err
-	}
-
-	// Indicate that we are doing a normal RPC, not a streaming one.
-	if err := c.coder.Encode(conn, rpcNorm); err != nil {
-		return nil, err
-	}
-
-	// Send method name.
-	if err := c.coder.Encode(conn, methodName); err != nil {
-		return nil, err
-	}
-
 	// Send arguments.
 	if err := c.coder.Encode(conn, args); err != nil {
 		return nil, err
 	}
 
-	gc := gob.NewDecoder(conn)
 	// Get return values.
 	var readRets []interface{}
-	if err := gc.Decode(&readRets); err != nil {
+	if err := c.coder.Decode(conn, &readRets); err != nil {
 		return nil, err
 	}
 
@@ -100,41 +112,14 @@ func (c *Client) handleNormRPC(methodName string, conn net.Conn, fnargs []interf
 	}
 
 	for i, read := range readRets {
-		reflRet := reflect.ValueOf(rets[i])
-		reflRet.Elem().Set(reflect.ValueOf(read))
+		reflect.ValueOf(rets[i]).Elem().Set(reflect.ValueOf(read))
 	}
 
-	return nil, nil
+	return conn, nil
 }
 
 func (c *Client) Close() error {
 	return nil
-}
-
-func (c *Client) callStreaming(mName string, args []interface{}) (net.Conn, error) {
-	conn, err := c.d.Dial()
-	if err != nil {
-		return nil, err
-	}
-
-	err = c.coder.Encode(conn, tagRPC)
-	if err != nil {
-		return nil, err
-	}
-
-	err = c.coder.Encode(conn, mName)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, arg := range args {
-		err := c.coder.Encode(conn, arg)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return conn, nil
 }
 
 func clientDoHandshake(d anet.Dialer, coder Coder) (map[string]rpcClass, error) {

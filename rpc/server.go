@@ -10,6 +10,18 @@ import (
 	"strings"
 )
 
+const ErrNil = StrError("")
+
+type StrError string
+
+func (s StrError) IsNil() bool {
+	return s == ""
+}
+
+func (s StrError) Error() string {
+	return string(s)
+}
+
 const (
 	tagRPC = byte(iota)
 	tagHandshake
@@ -65,7 +77,7 @@ func (s *Server) Close() error {
 // Method signatures must fit one of the following forms. For normal rpcs that
 // do not stream, any number of arguments and return values must be defined.
 //  func RPCNorm_methodNameHere(t1, t2, t3 ... , tn) (rt1, rt2 ... rtn)
-//  func RPCRead_methodNameHere(t1, t2, t3 ... , tn) (io.ReadCloser, rt1, rt2 ... rtn)
+//  func RPCRead_methodNameHere(t1, t2, t3 ... , tn) (io.Reader, rt1, rt2 ... rtn)
 //  func RPCWrite_methodNameHere(t1, t2, t3 ... , tn) (io.Writer, rt1, rt2 ... rtn)
 func (s *Server) Register(name string, rcvr interface{}) error {
 	const (
@@ -77,31 +89,31 @@ func (s *Server) Register(name string, rcvr interface{}) error {
 	refl := reflect.ValueOf(rcvr)
 	typ := reflect.TypeOf(rcvr)
 	s.types[name] = refl
-	for i := 0; i < refl.NumMethod(); i++ {
+	for i := 0; i < typ.NumMethod(); i++ {
 		var (
-			mName  string
-			mClass rpcClass
+			methodName string
+			mClass     rpcClass
 		)
 
-		getName := func(prefix string) string {
+		getName := func(i int, prefix string) string {
 			return strings.SplitN(typ.Method(i).Name, prefix, 2)[1]
 		}
 
 		switch {
 		case strings.HasPrefix(typ.Method(i).Name, norm_prefix):
-			mName = getName(norm_prefix)
+			methodName = getName(i, norm_prefix)
 			mClass = rpcNorm
 		case strings.HasPrefix(typ.Method(i).Name, read_prefix):
-			mName = getName(read_prefix)
+			methodName = getName(i, read_prefix)
 			mClass = rpcRead
 		case strings.HasPrefix(typ.Method(i).Name, write_prefix):
-			mName = getName(write_prefix)
+			methodName = getName(i, write_prefix)
 			mClass = rpcWrite
 		default:
 			continue
 		}
 
-		s.methods[name+"."+mName] = method{refl.Method(i), mClass}
+		s.methods[name+"."+methodName] = method{refl.Method(i), mClass}
 	}
 
 	return nil
@@ -155,34 +167,15 @@ func (s *Server) handshake(conn net.Conn) {
 }
 
 func (s *Server) handleRPC(conn net.Conn) {
-	var (
-		class      rpcClass
-		methodName string
-	)
-
-	if err := s.coder.Decode(conn, &class); err != nil {
-		panic(err)
-	}
-
+	var methodName string
 	if err := s.coder.Decode(conn, &methodName); err != nil {
 		panic(err)
 	}
 
-	_, ok := s.methods[methodName]
+	info, ok := s.methods[methodName]
 	if !ok {
 		panic(fmt.Sprintf("couldn't find %v in method index", methodName))
 	}
-
-	switch class {
-	case rpcNorm:
-		s.handleNormRPC(conn, methodName)
-	default:
-		panic(fmt.Sprintf("not doing that yet: %v", class))
-	}
-}
-
-func (s *Server) handleNormRPC(conn net.Conn, methodName string) {
-	info := s.methods[methodName]
 
 	var args []interface{}
 	if err := s.coder.Decode(conn, &args); err != nil {
@@ -194,98 +187,37 @@ func (s *Server) handleNormRPC(conn net.Conn, methodName string) {
 		reflArgs[i] = reflect.ValueOf(arg)
 	}
 	outs := info.method.Call(reflArgs)
+	var sendOuts []reflect.Value
 
-	rets := make([]interface{}, len(outs))
-	for i, out := range outs {
+	switch info.class {
+	case rpcNorm:
+		sendOuts = outs
+	default:
+		sendOuts = outs[1:]
+	}
+
+	rets := make([]interface{}, len(sendOuts))
+	for i, out := range sendOuts {
 		rets[i] = out.Interface()
 	}
 
 	if err := s.coder.Encode(conn, rets); err != nil {
 		panic(err)
 	}
-}
 
-// For writing RPCs, we want to decode arguments and pass them as well as
-// the conn to the local method so it can read.
-func (s *Server) handleStreamRPC(conn net.Conn) {
-	var mName string
-	err := s.coder.Decode(conn, &mName)
-	if err != nil {
-		log.Println("Received malformed stream rpc, couldn't decode method name")
-		conn.Close()
-		return
-	}
-
-	// TODO: Add support for arguments of any type
-
-	// TODO: Add support for any number of arguments. I think think an be done
-	// by just iterating through all the arguments s.methods[mName] and
-	// decoding to reflect.New'ed pointers for each type
-
-	mth, ok := s.methods[mName]
-	if !ok {
-		log.Printf("Method %v not recognized", mName)
-		conn.Close()
-		return
-	}
-
-	mType := mth.method.Type()
-
-	name := strings.SplitN(mName, ".", 2)[0]
-
-	// Decode arguments
-	args := make([]reflect.Value, mType.NumIn())
-	args[0] = s.types[name]
-	for i := 1; i < mType.NumIn(); i++ {
-		val := reflect.New(mType.In(i))
-		err = s.coder.Decode(conn, val.Interface())
-		if err != nil {
-			log.Println("couldn't decode argument %v of type %v", i, mType.In(i))
-			return
-		}
-
-		args[i] = val.Elem()
-	}
-
-	// TODO: For a stream write, we are emulating a function with an io.Reader
-	// argument. Pass conn in as the first argument, and the decoded arguments
-	// as the rest.
-	outs := s.methods[mName].method.Call(args)
-
-	outInts := make([]interface{}, len(outs))
-	for i, o := range outs {
-		outInts[i] = o.Interface()
-	}
-
-	switch s.methods[mName].class {
-	case rpcNorm:
-		err = s.coder.Encode(conn, outInts)
-		if err != nil {
-			log.Println("Error writing return arguments to client:", err)
+	switch info.class {
+	case rpcRead:
+		defer conn.Close()
+		if _, err := io.Copy(conn, outs[0].Interface().(io.Reader)); err != nil {
+			log.Println(err)
 			return
 		}
 	case rpcWrite:
-		o := outs[0].Interface().(io.Writer)
-		log.Println("in writer case")
-		_, err = io.Copy(o, conn)
-		if err != nil {
-			log.Println("Error executing copy:", err)
+		w := outs[0].Interface().(io.WriteCloser)
+		if _, err := io.Copy(w, conn); err != nil {
+			log.Println(err)
 			return
 		}
-	case rpcRead:
-		o := outs[0].Interface().(io.Reader)
-		_, err = io.Copy(conn, o)
-		if err != nil {
-			log.Println("Error executing copy:", err)
-			return
-		}
-
-		log.Println("in reader case")
-
-		err = conn.Close()
-		if err != nil {
-			log.Println("Error closing connection after copy:", err)
-			return
-		}
+		w.Close()
 	}
 }
