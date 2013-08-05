@@ -45,8 +45,12 @@ func (c *Client) Call(methodName string, fnargs ...interface{}) error {
 		return fmt.Errorf("wrong rpc type, please use CallRead or CallWrite for streaming RPCs")
 	}
 
-	_, err := c.call(methodName, fnargs)
-	return err
+	conn, err := c.call(methodName, fnargs)
+	if err != nil {
+		return err
+	}
+
+	return conn.Close()
 }
 
 func (c *Client) CallRead(methodName string, fnargs ...interface{}) (io.Reader, error) {
