@@ -8,6 +8,8 @@ import (
 	"net/rpc"
 	"reflect"
 	"strings"
+
+	anet "aaw/net"
 )
 
 const ErrNil = StrError("")
@@ -38,6 +40,21 @@ const (
 type method struct {
 	method reflect.Value
 	class  rpcClass
+}
+
+func NewPipeCliSrv() (*Client, *Server, error) {
+	pnet := anet.NewPipeNet()
+
+	srv := NewServer()
+	go srv.Accept(pnet)
+
+	cli, err := NewClient(pnet)
+	if err != nil {
+		srv.Close()
+		return nil, nil, err
+	}
+
+	return cli, srv, nil
 }
 
 type Server struct {
