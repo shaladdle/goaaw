@@ -1,13 +1,13 @@
 package testutil
 
 import (
-    "testing"
 	"crypto/rand"
-    "log"
 	"io"
+	"log"
 	"os"
 	"path"
 	"strconv"
+	"testing"
 )
 
 var (
@@ -15,19 +15,19 @@ var (
 )
 
 func GetTestPath() string {
-    return testPath
+	return testPath
 }
 
 func SetTestPath(tpath string) {
-    testPath = tpath
+	testPath = tpath
 }
 
 func RmTestDir(dir string) error {
-    return os.RemoveAll(path.Join(testPath, dir))
+	return os.RemoveAll(path.Join(testPath, dir))
 }
 
 func MkTestDir(dir string) error {
-    return TryMkdir(path.Join(testPath, dir))
+	return TryMkdir(path.Join(testPath, dir))
 }
 
 func TryMkdir(dir string) error {
@@ -51,12 +51,12 @@ type FileSpec struct {
 }
 
 func GenRandFiles(specs []FileSpec) ([]string, error) {
-    log.Println("UTIL", "generating test files")
-    ret := []string{}
+	log.Println("UTIL", "generating test files")
+	ret := []string{}
 
 	for _, spec := range specs {
 		for i := 0; i < spec.Num; i++ {
-            fname := strconv.Itoa(i)+strconv.FormatInt(spec.Size, 10)
+			fname := strconv.Itoa(i) + strconv.FormatInt(spec.Size, 10)
 			fpath := path.Join(testPath, fname)
 			if err := GenRandFile(fpath, spec.Size); err != nil {
 				return nil, err
@@ -65,18 +65,18 @@ func GenRandFiles(specs []FileSpec) ([]string, error) {
 			ret = append(ret, fname)
 		}
 	}
-    log.Println("UTIL", "done")
+	log.Println("UTIL", "done")
 
 	return ret, nil
 }
 
 func WriteRandFile(w io.Writer, size int64) error {
-    _, err := io.CopyN(w, rand.Reader, size)
+	_, err := io.CopyN(w, rand.Reader, size)
 	if err != nil {
 		return err
 	}
 
-    return nil
+	return nil
 }
 
 func GenRandFile(dstPath string, size int64) error {
@@ -84,36 +84,36 @@ func GenRandFile(dstPath string, size int64) error {
 	if err != nil {
 		return err
 	}
-    defer f.Close()
+	defer f.Close()
 
 	return WriteRandFile(f, size)
 }
 
 type TestEnv struct {
-    dir string
-    t *testing.T
+	dir string
+	t   *testing.T
 }
 
 func NewTestEnv(dir string, t *testing.T) *TestEnv {
-    err := MkTestDir(dir)
-    if err != nil {
-        t.Errorf("error creating directory for test environment: %v", err)
-    }
+	err := MkTestDir(dir)
+	if err != nil {
+		t.Errorf("error creating directory for test environment: %v", err)
+	}
 
-    return &TestEnv{dir, t}
+	return &TestEnv{dir, t}
 }
 
 func (te *TestEnv) Teardown() {
-    err := RmTestDir(te.dir)
-    if err != nil {
-        te.t.Errorf("error removing directory for test environment: %v", err)
-    }
+	err := RmTestDir(te.dir)
+	if err != nil {
+		te.t.Errorf("error removing directory for test environment: %v", err)
+	}
 }
 
 func (te *TestEnv) Root() string {
-    return path.Join(testPath, te.dir)
+	return path.Join(testPath, te.dir)
 }
 
 func (te *TestEnv) PathFor(name string) string {
-    return path.Join(testPath, te.dir, name)
+	return path.Join(testPath, te.dir, name)
 }

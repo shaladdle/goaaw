@@ -3,8 +3,8 @@ package testutil
 
 import (
 	crand "crypto/rand"
+	"io"
 	mrand "math/rand"
-    "io"
 )
 
 var (
