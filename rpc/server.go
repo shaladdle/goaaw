@@ -42,10 +42,11 @@ type method struct {
 	class  rpcClass
 }
 
-func NewPipeCliSrv() (*Client, *Server, error) {
+func NewPipeCliSrv(regName string, o interface{}) (*Client, *Server, error) {
 	pnet := anet.NewPipeNet()
 
 	srv := NewServer()
+	srv.Register(regName, o)
 	go srv.Accept(pnet)
 
 	cli, err := NewClient(pnet)

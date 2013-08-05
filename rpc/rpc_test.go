@@ -177,3 +177,86 @@ func TestReadWriteRPC(t *testing.T) {
 
 // TODO: Add test case to make sure server can handle nil return values on a
 // streaming RPC.
+
+func BenchmarkTCPClientCreate(b *testing.B) {
+	const hostport = "localhost:8080"
+	srv := NewServer()
+	defer srv.Close()
+	srv.TCPListen(hostport)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		NewClient(anet.TCPDialer(hostport))
+	}
+	b.StopTimer()
+}
+
+func BenchmarkPipeClientCreate(b *testing.B) {
+	pnet := anet.NewPipeNet()
+	srv := NewServer()
+	defer srv.Close()
+	go srv.Accept(pnet)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		NewClient(pnet)
+	}
+	b.StopTimer()
+}
+
+func addRPCBench(b *testing.B, d, e, want int, cli *Client) {
+	var got int
+	b.StopTimer()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		b.StartTimer()
+		err := cli.Call(serverPrefix+".Add", d, e, &got)
+		b.StopTimer()
+
+		if err != nil {
+			b.Fatal(err)
+		}
+
+		if got != want {
+			b.Fatal(serverPrefix + ".Add not working properly")
+		}
+	}
+}
+
+func BenchmarkTCPNormRPC(b *testing.B) {
+	const hostport = "localhost:8080"
+
+	var (
+		d    int = 1
+		e    int = 1
+		want int = d + e
+	)
+
+	srv := NewServer()
+	srv.Register(serverPrefix, &testServer{})
+	defer srv.Close()
+	srv.TCPListen(hostport)
+
+	cli, err := NewClient(anet.TCPDialer(hostport))
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	addRPCBench(b, d, e, want, cli)
+}
+
+func BenchmarkPipeNormRPC(b *testing.B) {
+	var (
+		d    int = 1
+		e    int = 1
+		want int = d + e
+	)
+
+	cli, srv, err := NewPipeCliSrv(serverPrefix, &testServer{})
+	if err != nil {
+		b.Fatal(err)
+	}
+	defer srv.Close()
+
+	addRPCBench(b, d, e, want, cli)
+}
