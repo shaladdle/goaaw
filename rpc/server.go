@@ -44,9 +44,8 @@ type Server struct {
 	coder   Coder
 	types   map[string]reflect.Value // map of registered 'objects'
 	methods map[string]method        // map of registered methods
-	start   chan bool
-	conns   chan net.Conn
 	rpc     *rpc.Server
+	closing chan bool
 }
 
 func NewServer() *Server {
@@ -58,14 +57,9 @@ func NewServerWithCoder(coder Coder) *Server {
 		coder:   coder,
 		types:   make(map[string]reflect.Value),
 		methods: make(map[string]method),
-		start:   make(chan bool),
-		conns:   make(chan net.Conn),
 		rpc:     rpc.NewServer(),
+		closing: make(chan bool),
 	}
-}
-
-func (s *Server) Close() error {
-	return nil
 }
 
 // Register registers an object with this rpc server. It returns an error if a
@@ -131,12 +125,28 @@ func (s *Server) TCPListen(hostport string) error {
 }
 
 func (s *Server) Accept(lis net.Listener) {
-	for {
+	accept := func(conns chan net.Conn) {
 		conn, err := lis.Accept()
 		if err != nil {
 			panic(err)
 		}
 
+		conns <- conn
+	}
+
+	for {
+		conns := make(chan net.Conn)
+		go accept(conns)
+
+		var conn net.Conn
+
+		select {
+		case <-s.closing:
+			lis.Close()
+			s.closing <- true
+			return
+		case conn = <-conns:
+		}
 		var tag byte
 
 		if err := s.coder.Decode(conn, &tag); err != nil {
@@ -220,4 +230,9 @@ func (s *Server) handleRPC(conn net.Conn) {
 		}
 		w.Close()
 	}
+}
+
+func (s *Server) Close() {
+	s.closing <- true
+	<-s.closing
 }
