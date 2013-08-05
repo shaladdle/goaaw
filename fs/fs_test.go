@@ -7,10 +7,12 @@ import (
 	"crypto/sha1"
 	"fmt"
 	"io"
+	"os"
 	"testing"
 
 	"aaw/fs/remote"
 	"aaw/fs/std"
+	"aaw/fs/util"
 	"aaw/testutil"
 )
 
@@ -40,6 +42,18 @@ var tests = []testInfo{
 
 		return cli, cleanup, nil
 	}},
+}
+
+func checkFileInfo(t *testing.T, testName string, got, want os.FileInfo) {
+	if got, want := got.Name(), want.Name(); got != want {
+		t.Errorf("test %v: name mismatch, got %v, want %v", testName, got, want)
+	}
+	if got, want := got.Size(), want.Size(); got != want {
+		t.Errorf("test %v: size is incorrect, got %v, want 0", testName, got)
+	}
+	if got, want := got.IsDir(), want.IsDir(); got != want {
+		t.Errorf("test %v: IsDir is incorrect, got %v, want false", testName, got)
+	}
 }
 
 // TestWriteRead writes a file and then reads it back and compares the hash to
@@ -119,7 +133,9 @@ func TestWriteRead(t *testing.T) {
 
 // TestTouchStat checks that creating a file with 0 length works properly.
 func TestTouchStat(t *testing.T) {
-	fname := "foo"
+	// In this particular case, the file name and the path relative to the fs
+	// root are the same.
+	want := util.FileInfo{I_Name: "foo"}
 
 	testBody := func(i int, ti testInfo) {
 		fs, cleanup, err := ti.setup(t)
@@ -130,7 +146,7 @@ func TestTouchStat(t *testing.T) {
 			return
 		}
 
-		f, err := fs.Create(fname)
+		f, err := fs.Create(want.Name())
 		if err != nil {
 			t.Errorf("test %v: file creation: %v", ti.name, err)
 			return
@@ -138,19 +154,13 @@ func TestTouchStat(t *testing.T) {
 
 		f.Close()
 
-		info, err := fs.Stat(fname)
+		got, err := fs.Stat(want.Name())
 		if err != nil {
 			t.Errorf("test %v: file stat: %v", ti.name, err)
 			return
 		}
 
-		if info.Name() != fname {
-			t.Errorf("test %v: file name mismatch, got %v, want %v", ti.name, info.Name(), fname)
-		}
-
-		if info.Size() != 0 {
-			t.Errorf("test %v: file size should be 0", ti.name, info.Name(), fname)
-		}
+		checkFileInfo(t, ti.name, got, want)
 	}
 
 	for i, ti := range tests {
@@ -195,8 +205,6 @@ func TestTouchRemove(t *testing.T) {
 
 // TestGetFiles creates some files in a test directory and verifies that
 // GetFiles lists them when called.
-//
-// TODO: Test all fields of the FileInfo interface
 func TestGetFiles(t *testing.T) {
 	testBody := func(i int, ti testInfo) {
 		fs, cleanup, err := ti.setup(t)
@@ -206,19 +214,25 @@ func TestGetFiles(t *testing.T) {
 			return
 		}
 
-		fnames := []string{"file1", "file2", "file3", "file4"}
+		newInfo := func(name string) util.FileInfo {
+			return util.FileInfo{
+				I_Name:  name,
+				I_Size:  0,
+				I_IsDir: false,
+			}
+		}
 
-		for _, fname := range fnames {
-			f, err := fs.Create(fname)
+		wants := []util.FileInfo{
+			newInfo("file1"),
+			newInfo("file2"),
+			newInfo("file3"),
+			newInfo("file4"),
+		}
+
+		for _, fname := range wants {
+			f, err := fs.Create(fname.Name())
 			if err != nil {
 				t.Errorf("test %v: test initialization: %v", ti.name, err)
-				continue
-			}
-
-			err = testutil.WriteRandFile(f, 0)
-			if err != nil {
-				t.Errorf("test %v: writing random file '%v': %v", ti.name, fname, err)
-				f.Close()
 				continue
 			}
 
@@ -231,15 +245,13 @@ func TestGetFiles(t *testing.T) {
 			return
 		}
 
-		if ilen, flen := len(infos), len(fnames); ilen != flen {
+		if ilen, flen := len(infos), len(wants); ilen != flen {
 			t.Errorf("test %v: GetFiles returned list of length %v, want length %v", ti.name, ilen, flen)
 			return
 		}
 
-		for i, info := range infos {
-			if info.Name() != fnames[i] {
-				t.Errorf("test %v: name mismatch, got %v, want %v", ti.name, info.Name(), fnames[i])
-			}
+		for i, got := range infos {
+			checkFileInfo(t, ti.name, got, wants[i])
 		}
 	}
 

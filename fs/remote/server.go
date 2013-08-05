@@ -1,46 +1,14 @@
 package remote
 
 import (
-	"encoding/gob"
 	"io"
-	"os"
-	"time"
     "net"
 
 	"aaw/fs/std"
 	anet "aaw/net"
 	"aaw/rpc"
+    "aaw/fs/util"
 )
-
-func init() {
-	gob.Register(fileInfo{})
-	gob.Register([]fileInfo{})
-}
-
-type fileInfo struct {
-	I_Name    string      // base name of the file
-	I_Size    int64       // length in bytes for regular files; system-dependent for others
-	I_Mode    os.FileMode // file mode bits
-	I_ModTime time.Time   // modification time
-	I_IsDir   bool        // abbreviation for Mode().IsDir()
-}
-
-func (info fileInfo) Name() string       { return info.I_Name }
-func (info fileInfo) Size() int64        { return info.I_Size }
-func (info fileInfo) Mode() os.FileMode  { return info.I_Mode }
-func (info fileInfo) ModTime() time.Time { return info.I_ModTime }
-func (info fileInfo) IsDir() bool        { return info.I_IsDir }
-func (info fileInfo) Sys() interface{}   { return nil }
-
-func fromOSFileInfo(info os.FileInfo) fileInfo {
-	return fileInfo{
-		I_Name:    info.Name(),
-		I_Size:    info.Size(),
-		I_Mode:    info.Mode(),
-		I_ModTime: info.ModTime(),
-		I_IsDir:   info.IsDir(),
-	}
-}
 
 type Server struct {
 	stdfs  std.FileSystem
@@ -106,13 +74,13 @@ func (s *Server) RPCRead_Open(fpath string) (io.Reader, rpc.StrError) {
 	return f, rpc.ErrNil
 }
 
-func (s *Server) RPCNorm_Stat(fpath string) (fileInfo, rpc.StrError) {
+func (s *Server) RPCNorm_Stat(fpath string) (util.FileInfo, rpc.StrError) {
 	info, err := s.stdfs.Stat(fpath)
 	if err != nil {
-		return fileInfo{}, rpc.StrError(err.Error())
+		return util.FileInfo{}, rpc.StrError(err.Error())
 	}
 
-	return fromOSFileInfo(info), rpc.ErrNil
+	return util.FromOSInfo(info), rpc.ErrNil
 }
 
 func (s *Server) RPCNorm_Mkdir(fpath string) rpc.StrError {
@@ -131,15 +99,15 @@ func (s *Server) RPCNorm_Remove(fpath string) rpc.StrError {
 	return rpc.ErrNil
 }
 
-func (s *Server) RPCNorm_GetFiles(fpath string) ([]fileInfo, rpc.StrError) {
+func (s *Server) RPCNorm_GetFiles(fpath string) ([]util.FileInfo, rpc.StrError) {
 	infos, err := s.stdfs.GetFiles(fpath)
 	if err != nil {
 		return nil, rpc.StrError(err.Error())
 	}
 
-    ret := make([]fileInfo, len(infos))
+    ret := make([]util.FileInfo, len(infos))
     for i, info := range infos {
-        ret[i] = fromOSFileInfo(info)
+        ret[i] = util.FromOSInfo(info)
     }
 
 	return ret, rpc.ErrNil
