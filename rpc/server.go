@@ -128,7 +128,8 @@ func (s *Server) Accept(lis net.Listener) {
 	accept := func(conns chan net.Conn) {
 		conn, err := lis.Accept()
 		if err != nil {
-			panic(err)
+			close(conns)
+			return
 		}
 
 		conns <- conn
