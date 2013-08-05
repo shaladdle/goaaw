@@ -23,9 +23,9 @@ type FileSystem interface {
 	// cannot Seek, ReadAt, Truncate, etc...
 	Create(path string) (io.WriteCloser, error)
 
-    // Creates a directory at path. Also creates all parent directories 
-    // required to make the final directory.
-    Mkdir(path string) error
+	// Creates a directory at path. Also creates all parent directories
+	// required to make the final directory.
+	Mkdir(path string) error
 
 	// Get file info.
 	Stat(path string) (os.FileInfo, error)

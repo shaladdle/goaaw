@@ -6,7 +6,6 @@ import (
 	"io"
 	"testing"
 
-	"aaw/fs/inmem"
 	"aaw/fs/std"
 	"aaw/testutil"
 )
@@ -21,15 +20,12 @@ var tests = []testInfo{
 		te := testutil.NewTestEnv("testcase-stdfs", t)
 		return std.New(te.Root()), func() { te.Teardown() }, nil
 	}},
-	{"inmem", func(t *testing.T) (FileSystem, func(), error) {
-		return inmem.New(), func() {}, nil
-	}},
 }
 
 // TestWriteRead writes a file and then reads it back and compares the hash to
 // make sure the same contents was read and written.
 func TestWriteRead(t *testing.T) {
-    const readTimes = 5
+	const readTimes = 5
 
 	te := testutil.NewTestEnv("TestWriteRead", t)
 	defer te.Teardown()
@@ -49,12 +45,12 @@ func TestWriteRead(t *testing.T) {
 			t.Errorf("test %v: create: %v", ti.name, err)
 			return
 		}
-        wcleanup := func() {
-            err := w.Close()
-            if err != nil {
-                t.Errorf("test %v: error closing file: %v", ti.name, err)
-            }
-        }
+		wcleanup := func() {
+			err := w.Close()
+			if err != nil {
+				t.Errorf("test %v: error closing file: %v", ti.name, err)
+			}
+		}
 
 		hIn, hOut := sha1.New(), sha1.New()
 		hw := io.MultiWriter(w, hIn)
@@ -62,38 +58,38 @@ func TestWriteRead(t *testing.T) {
 		err = testutil.WriteRandFile(hw, testutil.KB)
 		if err != nil {
 			t.Errorf("test %v: write: %v", ti.name, err)
-            wcleanup()
+			wcleanup()
 			return
 		}
 
-        wcleanup()
+		wcleanup()
 
-        // We do this a few times in case someone is using a single 
-        // bytes.Buffer or some other non-idempotent mechanism for file reads.
-        for j := 0; j < readTimes; j++ {
-            r, err := fs.Open(fname)
-            if err != nil {
-                t.Errorf("test %v: open: %v", ti.name, err)
-                return
-            }
-            defer r.Close()
+		// We do this a few times in case someone is using a single
+		// bytes.Buffer or some other non-idempotent mechanism for file reads.
+		for j := 0; j < readTimes; j++ {
+			r, err := fs.Open(fname)
+			if err != nil {
+				t.Errorf("test %v: open: %v", ti.name, err)
+				return
+			}
+			defer r.Close()
 
-            hOut.Reset()
+			hOut.Reset()
 
-            n, err := io.Copy(hOut, r)
-            if n == 0 {
-                t.Errorf("test %v: copy wrote 0 bytes", ti.name)
-                return
-            }
-            if err != nil {
-                t.Errorf("test %v: copy: %v", ti.name, err)
-                return
-            }
+			n, err := io.Copy(hOut, r)
+			if n == 0 {
+				t.Errorf("test %v: copy wrote 0 bytes", ti.name)
+				return
+			}
+			if err != nil {
+				t.Errorf("test %v: copy: %v", ti.name, err)
+				return
+			}
 
-            if !bytes.Equal(hIn.Sum(nil), hOut.Sum(nil)) {
-                t.Errorf("test %v: hashes did not match", ti.name)
-            }
-        }
+			if !bytes.Equal(hIn.Sum(nil), hOut.Sum(nil)) {
+				t.Errorf("test %v: hashes did not match", ti.name)
+			}
+		}
 	}
 
 	for i, ti := range tests {
@@ -242,23 +238,23 @@ func TestMkdir(t *testing.T) {
 			return
 		}
 
-        dname := "testdir"
+		dname := "testdir"
 
-        err = fs.Mkdir(dname)
+		err = fs.Mkdir(dname)
 		if err != nil {
 			t.Errorf("test %v: mkdir error: %v", ti.name, err)
 			return
 		}
 
-        info, err := fs.Stat(dname)
+		info, err := fs.Stat(dname)
 		if err != nil {
 			t.Errorf("test %v: stat error: %v", ti.name, err)
 			return
 		}
 
-        if !info.IsDir() {
-            t.Errorf("test %v: stat info indicates this is a regular file, not a directory", ti.name)
-        }
+		if !info.IsDir() {
+			t.Errorf("test %v: stat info indicates this is a regular file, not a directory", ti.name)
+		}
 	}
 
 	for i, ti := range tests {
