@@ -1,11 +1,15 @@
 package fs
 
+// TODO: Get in memory file system working
+
 import (
 	"bytes"
 	"crypto/sha1"
+	"fmt"
 	"io"
 	"testing"
 
+	"aaw/fs/remote"
 	"aaw/fs/std"
 	"aaw/testutil"
 )
@@ -19,6 +23,22 @@ var tests = []testInfo{
 	{"std", func(t *testing.T) (FileSystem, func(), error) {
 		te := testutil.NewTestEnv("testcase-stdfs", t)
 		return std.New(te.Root()), func() { te.Teardown() }, nil
+	}},
+	{"remote", func(t *testing.T) (FileSystem, func(), error) {
+		te := testutil.NewTestEnv("testcase-remotefs", t)
+
+		cli, srv, err := remote.NewPipeCliSrv(te.Root())
+		if err != nil {
+			return nil, nil, err
+		}
+
+		cleanup := func() {
+			srv.Close()
+			cli.Close()
+			te.Teardown()
+		}
+
+		return cli, cleanup, nil
 	}},
 }
 
@@ -105,6 +125,7 @@ func TestTouchStat(t *testing.T) {
 		fs, cleanup, err := ti.setup(t)
 		defer cleanup()
 		if err != nil {
+			fmt.Println(fs, cleanup, err)
 			t.Errorf("test %v: test initialization: %v", ti.name, err)
 			return
 		}

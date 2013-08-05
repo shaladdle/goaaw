@@ -9,23 +9,23 @@ import (
     "os"
 )
 
-// StdFileSystem uses the os file operations to emulate a file system mounted 
+// FileSystem uses the os file operations to emulate a file system mounted 
 // at root.
-type StdFileSystem struct {
+type FileSystem struct {
     root string
 }
 
-func New(root string) StdFileSystem {
-    return StdFileSystem{root}
+func New(root string) FileSystem {
+    return FileSystem{root}
 }
 
-func (fs StdFileSystem) Open(fpath string) (io.ReadCloser, error) { return os.Open(path.Join(fs.root, fpath)) }
-func (fs StdFileSystem) Create(fpath string) (io.WriteCloser, error) { return os.Create(path.Join(fs.root, fpath)) }
-func (fs StdFileSystem) Mkdir(dpath string) error { return os.MkdirAll(path.Join(fs.root, dpath), 0777) }
-func (fs StdFileSystem) Stat(fpath string) (os.FileInfo, error) { return os.Stat(path.Join(fs.root, fpath)) }
-func (fs StdFileSystem) Remove(fpath string) error { return os.Remove(path.Join(fs.root, fpath)) }
+func (fs FileSystem) Open(fpath string) (io.ReadCloser, error) { return os.Open(path.Join(fs.root, fpath)) }
+func (fs FileSystem) Create(fpath string) (io.WriteCloser, error) { return os.Create(path.Join(fs.root, fpath)) }
+func (fs FileSystem) Mkdir(dpath string) error { return os.MkdirAll(path.Join(fs.root, dpath), 0777) }
+func (fs FileSystem) Stat(fpath string) (os.FileInfo, error) { return os.Stat(path.Join(fs.root, fpath)) }
+func (fs FileSystem) Remove(fpath string) error { return os.Remove(path.Join(fs.root, fpath)) }
 
-func (fs StdFileSystem) GetFiles(fpath string) ([]os.FileInfo, error) {
+func (fs FileSystem) GetFiles(fpath string) ([]os.FileInfo, error) {
     fspath := path.Join(fs.root, fpath)
     info, err := os.Stat(fspath)
     if err != nil {
