@@ -106,6 +106,8 @@ func (c *Client) call(methodName string, fnargs []interface{}) (net.Conn, error)
 	}
 
 	// Get return values.
+	// TODO: For some unkown reason, this takes an enormous amount of time
+	// (about 2s) over TCP. Fix it.
 	var readRets []interface{}
 	if err := c.coder.Decode(conn, &readRets); err != nil {
 		return nil, err
