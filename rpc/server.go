@@ -91,6 +91,8 @@ func NewServerWithCoder(coder Coder) *Server {
 //  func RPCNorm_methodNameHere(t1, t2, t3 ... , tn) (rt1, rt2 ... rtn)
 //  func RPCRead_methodNameHere(t1, t2, t3 ... , tn) (io.Reader, rt1, rt2 ... rtn)
 //  func RPCWrite_methodNameHere(t1, t2, t3 ... , tn) (io.Writer, rt1, rt2 ... rtn)
+//
+//TODO: Support io.ReadCloser instead of io.Reader
 func (s *Server) Register(name string, rcvr interface{}) error {
 	const (
 		norm_prefix  = "RPCNorm_"
