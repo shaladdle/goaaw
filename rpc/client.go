@@ -106,8 +106,6 @@ func (c *Client) call(methodName string, fnargs []interface{}) (net.Conn, error)
 	}
 
 	// Get return values.
-	// TODO: For some unkown reason, this takes an enormous amount of time
-	// (about 2s) over TCP. Fix it.
 	for i := 0; i < len(rets); i++ {
 		if err := c.coder.Decode(conn, rets[i]); err != nil {
 			return nil, err

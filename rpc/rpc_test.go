@@ -25,6 +25,10 @@ func (testServer) RPCNorm_Add(a, b int) int {
 	return a + b
 }
 
+func (testServer) RPCNorm_Range() (a, b, c int, d string) {
+	return 1, 2, 3, "hi there"
+}
+
 func (s *testServer) RPCRead_ReadData() (io.Reader, StrError) {
 	s.Lock()
 	defer s.Unlock()
@@ -77,14 +81,12 @@ func newTestCliSrv(t *testing.T, s interface{}) (*Client, *Server) {
 	return cli, rpcs
 }
 
-func TestNormalRPC(t *testing.T) {
+func testAdd(t *testing.T, cli *Client) {
 	const (
 		arg1 int = 1
 		arg2 int = 2
 		want int = 3
 	)
-
-	cli, _ := newTestCliSrv(t, &testServer{})
 
 	methodName := serverPrefix + ".Add"
 	var got int
@@ -95,6 +97,59 @@ func TestNormalRPC(t *testing.T) {
 	if got != want {
 		t.Errorf("want %v, got %v", want, got)
 	}
+}
+
+type tester interface {
+	Errorf(string, ...interface{})
+}
+
+func testRange(t tester, cli *Client) {
+	wanta, wantb, wantc := 1, 2, 3
+	wantd := "hi there"
+
+	var (
+		gota, gotb, gotc int
+		gotd             string
+	)
+
+	methodName := serverPrefix + ".Range"
+
+	switch b := t.(type) {
+	case *testing.B:
+		b.StartTimer()
+	}
+
+	if err := cli.Call(methodName, &gota, &gotb, &gotc, &gotd); err != nil {
+		t.Errorf("call failed: %v", err)
+	}
+
+	switch b := t.(type) {
+	case *testing.B:
+		b.StopTimer()
+	}
+
+	if gota != wanta {
+		t.Errorf("wanta %v, gota %v", wanta, gota)
+	}
+
+	if gotb != wantb {
+		t.Errorf("wantb %v, gotb %v", wantb, gotb)
+	}
+
+	if gotc != wantc {
+		t.Errorf("wantc %v, gotc %v", wantc, gotc)
+	}
+
+	if gotd != wantd {
+		t.Errorf("wantd %v, gotd %v", wantd, gotd)
+	}
+}
+
+func TestNormalRPC(t *testing.T) {
+	cli, _ := newTestCliSrv(t, &testServer{})
+
+	testAdd(t, cli)
+	testRange(t, cli)
 }
 
 func TestReadRPC(t *testing.T) {
@@ -204,33 +259,16 @@ func BenchmarkPipeClientCreate(b *testing.B) {
 	b.StopTimer()
 }
 
-func addRPCBench(b *testing.B, d, e, want int, cli *Client) {
-	var got int
+func rangeRPCBench(b *testing.B, cli *Client) {
 	b.StopTimer()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		b.StartTimer()
-		err := cli.Call(serverPrefix+".Add", d, e, &got)
-		b.StopTimer()
-
-		if err != nil {
-			b.Fatal(err)
-		}
-
-		if got != want {
-			b.Fatal(serverPrefix + ".Add not working properly")
-		}
+		testRange(b, cli)
 	}
 }
 
 func BenchmarkTCPNormRPC(b *testing.B) {
 	const hostport = "localhost:8080"
-
-	var (
-		d    int = 1
-		e    int = 1
-		want int = d + e
-	)
 
 	srv := NewServer()
 	srv.Register(serverPrefix, &testServer{})
@@ -242,21 +280,15 @@ func BenchmarkTCPNormRPC(b *testing.B) {
 		b.Fatal(err)
 	}
 
-	addRPCBench(b, d, e, want, cli)
+	rangeRPCBench(b, cli)
 }
 
 func BenchmarkPipeNormRPC(b *testing.B) {
-	var (
-		d    int = 1
-		e    int = 1
-		want int = d + e
-	)
-
 	cli, srv, err := NewPipeCliSrv(serverPrefix, &testServer{})
 	if err != nil {
 		b.Fatal(err)
 	}
 	defer srv.Close()
 
-	addRPCBench(b, d, e, want, cli)
+	rangeRPCBench(b, cli)
 }
