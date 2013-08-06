@@ -237,11 +237,19 @@ func (s *Server) handleRPC(conn net.Conn) {
 	switch info.class {
 	case rpcRead:
 		defer conn.Close()
+		if outs[0].Interface() == nil {
+			return
+		}
+
 		if _, err := io.Copy(conn, outs[0].Interface().(io.Reader)); err != nil {
 			log.Println(err)
 			return
 		}
 	case rpcWrite:
+		if outs[0].Interface() == nil {
+			return
+		}
+
 		w := outs[0].Interface().(io.WriteCloser)
 		if _, err := io.Copy(w, conn); err != nil {
 			log.Println(err)
