@@ -3,6 +3,8 @@ package blkstore
 import (
 	"testing"
 
+	"aaw/fs/remote"
+	anet "aaw/net"
 	"aaw/testutil"
 )
 
@@ -24,6 +26,25 @@ var tests = []testCase{
 		}
 
 		return bs, func() { te.Teardown() }
+	}},
+	{"remote", func(t *testing.T) (BlkStore, func()) {
+		const hostport = "localhost:9000"
+		te := testutil.NewTestEnv("remote", t)
+
+		srv, err := remote.NewTCPServer(te.Root(), hostport)
+		if err != nil {
+			t.Errorf("setup error: %v", err)
+		}
+
+		bs, err := NewRemoteStore(anet.TCPDialer(hostport))
+		if err != nil {
+			t.Errorf("setup error: %v", err)
+		}
+
+		return bs, func() {
+			srv.Close()
+			te.Teardown()
+		}
 	}},
 }
 
