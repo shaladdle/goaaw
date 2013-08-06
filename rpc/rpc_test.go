@@ -233,8 +233,9 @@ func TestReadWriteRPC(t *testing.T) {
 // TODO: Add test case to make sure server can handle nil return values on a
 // streaming RPC.
 
+const hostport = "localhost:9000"
+
 func BenchmarkTCPClientCreate(b *testing.B) {
-	const hostport = "localhost:8080"
 	srv := NewServer()
 	defer srv.Close()
 	srv.TCPListen(hostport)
@@ -268,8 +269,6 @@ func rangeRPCBench(b *testing.B, cli *Client) {
 }
 
 func BenchmarkTCPNormRPC(b *testing.B) {
-	const hostport = "localhost:8080"
-
 	srv := NewServer()
 	srv.Register(serverPrefix, &testServer{})
 	defer srv.Close()
