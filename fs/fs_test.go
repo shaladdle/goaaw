@@ -27,9 +27,16 @@ var tests = []testInfo{
 		return std.New(te.Root()), func() { te.Teardown() }, nil
 	}},
 	{"remote", func(t *testing.T) (FileSystem, func(), error) {
-		te := testutil.NewTestEnv("testcase-remotefs", t)
+		const hostport = "localhost:9000"
 
-		cli, srv, err := remote.NewPipeCliSrv(te.Root())
+		te := testutil.NewTestEnv("testcase-net-remotefs", t)
+
+		srv, err := remote.NewTCPServer(te.Root(), hostport)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		cli, err := remote.NewTCPClient(hostport)
 		if err != nil {
 			return nil, nil, err
 		}
