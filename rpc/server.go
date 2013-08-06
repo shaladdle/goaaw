@@ -227,13 +227,11 @@ func (s *Server) handleRPC(conn net.Conn) {
 		sendOuts = outs[1:]
 	}
 
-	rets := make([]interface{}, len(sendOuts))
-	for i, out := range sendOuts {
-		rets[i] = out.Interface()
-	}
-
-	if err := s.coder.Encode(conn, rets); err != nil {
-		panic(err)
+	for _, out := range sendOuts {
+		if err := s.coder.EncodeValue(conn, out); err != nil {
+			log.Println(err)
+			return
+		}
 	}
 
 	switch info.class {
