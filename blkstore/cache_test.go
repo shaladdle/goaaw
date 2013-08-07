@@ -81,6 +81,9 @@ func TestCacheSizeLimit(t *testing.T) {
 	if curSize := cache.(*blkcache).curSize; curSize > maxSize {
 		t.Fatal("cache size is greater than maxSize: %v > %v", curSize, maxSize)
 	}
+	if curSize := cache.(*blkcache).store.(*memstore).Size(); curSize > maxSize {
+		t.Fatal("actual memstore size is greater than maxSize: %v > %v", curSize, maxSize)
+	}
 }
 
 func TestCachePutTooBig(t *testing.T) {

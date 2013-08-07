@@ -35,3 +35,11 @@ func (bs *memstore) Delete(key string) error {
 	delete(bs.data, key)
 	return nil
 }
+
+func (bs *memstore) Size() int64 {
+	var sum int64
+	for _, v := range bs.data {
+		sum += int64(len(v))
+	}
+	return sum
+}
