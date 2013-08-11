@@ -5,9 +5,9 @@ import (
 	"io"
 	"os"
 
+	"aaw/fs/util"
 	anet "aaw/net"
 	"aaw/rpc"
-    "aaw/fs/util"
 )
 
 type closeWrapper struct {
@@ -104,7 +104,7 @@ func (fs *Client) Mkdir(fpath string) error {
 	return nil
 }
 
-func (fs *Client) Remove(fpath string) error                    {
+func (fs *Client) Remove(fpath string) error {
 	var cErr rpc.StrError
 
 	err := fs.rpc.Call("RemoteFS.Remove", fpath, &cErr)
@@ -116,14 +116,14 @@ func (fs *Client) Remove(fpath string) error                    {
 		return cErr
 	}
 
-    return nil
+	return nil
 }
 
 func (fs *Client) GetFiles(fpath string) ([]os.FileInfo, error) {
 	var (
-        cErr rpc.StrError
-        infos []util.FileInfo
-    )
+		cErr  rpc.StrError
+		infos []util.FileInfo
+	)
 
 	err := fs.rpc.Call("RemoteFS.GetFiles", fpath, &infos, &cErr)
 	if err != nil {
@@ -134,12 +134,12 @@ func (fs *Client) GetFiles(fpath string) ([]os.FileInfo, error) {
 		return nil, cErr
 	}
 
-    ret := make([]os.FileInfo, len(infos))
-    for i, info := range infos {
-        ret[i] = info
-    }
+	ret := make([]os.FileInfo, len(infos))
+	for i, info := range infos {
+		ret[i] = info
+	}
 
-    return ret, nil
+	return ret, nil
 }
 
 func (fs *Client) Close() {}

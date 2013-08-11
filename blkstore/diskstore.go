@@ -12,8 +12,8 @@ type diskstore struct {
 	disk fs.FileSystem
 }
 
-func NewDiskStore(root string) (BlkStore, error) {
-	return &diskstore{std.New(root)}, nil
+func NewDiskStore(root string) BlkStore {
+	return &diskstore{std.New(root)}
 }
 
 func (bs *diskstore) Get(key string) ([]byte, error) {

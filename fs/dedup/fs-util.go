@@ -1,9 +1,9 @@
 package dedupfs
 
 import (
+	"encoding/json"
 	"os"
 	"strconv"
-	"encoding/json"
 )
 
 func fileExists(path string) bool {

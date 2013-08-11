@@ -19,13 +19,7 @@ var tests = []testCase{
 	}},
 	{"disk", func(t *testing.T) (BlkStore, func()) {
 		te := testutil.NewTestEnv("disk", t)
-
-		bs, err := NewDiskStore(te.Root())
-		if err != nil {
-			t.Errorf("setup error: %v", err)
-		}
-
-		return bs, func() { te.Teardown() }
+		return NewDiskStore(te.Root()), func() { te.Teardown() }
 	}},
 	{"remote", func(t *testing.T) (BlkStore, func()) {
 		const hostport = "localhost:9000"

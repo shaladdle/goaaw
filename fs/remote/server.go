@@ -2,12 +2,12 @@ package remote
 
 import (
 	"io"
-    "net"
+	"net"
 
 	"aaw/fs/std"
+	"aaw/fs/util"
 	anet "aaw/net"
 	"aaw/rpc"
-    "aaw/fs/util"
 )
 
 type Server struct {
@@ -16,20 +16,20 @@ type Server struct {
 }
 
 func NewPipeCliSrv(root string) (*Client, *Server, error) {
-    pnet := anet.NewPipeNet()
+	pnet := anet.NewPipeNet()
 
-    srv, err := NewServer(root, pnet)
-    if err != nil {
-        return nil, nil, err
-    }
+	srv, err := NewServer(root, pnet)
+	if err != nil {
+		return nil, nil, err
+	}
 
-    cli, err := NewClient(pnet)
-    if err != nil {
-        srv.Close()
-        return nil, nil, err
-    }
+	cli, err := NewClient(pnet)
+	if err != nil {
+		srv.Close()
+		return nil, nil, err
+	}
 
-    return cli, srv, nil
+	return cli, srv, nil
 }
 
 func NewServer(root string, l net.Listener) (*Server, error) {
@@ -105,10 +105,10 @@ func (s *Server) RPCNorm_GetFiles(fpath string) ([]util.FileInfo, rpc.StrError) 
 		return nil, rpc.StrError(err.Error())
 	}
 
-    ret := make([]util.FileInfo, len(infos))
-    for i, info := range infos {
-        ret[i] = util.FromOSInfo(info)
-    }
+	ret := make([]util.FileInfo, len(infos))
+	for i, info := range infos {
+		ret[i] = util.FromOSInfo(info)
+	}
 
 	return ret, rpc.ErrNil
 }

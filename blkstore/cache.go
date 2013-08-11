@@ -45,7 +45,7 @@ func (c *blkcache) Get(key string) ([]byte, error) {
 func (c *blkcache) Put(key string, value []byte) error {
 	size := int64(len(value))
 	if size > c.maxSize {
-		return fmt.Errorf("value for key '%v' is larger than the max blkcache size, max: %v, len(value): %v", key, c.maxSize, size)
+		return nil
 	}
 
 	// If the item is already in the blkcache, evict it since we will replace it
