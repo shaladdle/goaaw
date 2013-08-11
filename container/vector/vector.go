@@ -56,6 +56,7 @@ func (v Vector) KeySlice() []string {
 func (v Vector) KeyIter() <-chan string {
 	ch := make(chan string)
 	go func() {
+		defer close(ch)
 		for el := v.l.Front(); el != nil; el = el.Next() {
 			ch <- el.Value.(pair).key
 		}
