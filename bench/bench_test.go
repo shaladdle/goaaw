@@ -2,6 +2,8 @@ package bench
 
 import (
 	"fmt"
+	"os"
+	"path"
 	"testing"
 	"time"
 )
@@ -39,4 +41,14 @@ func TestBWBench(t *testing.T) {
 		t.Fatal(r2.err)
 	}
 	fmt.Println("Server results:", r2.result)
+}
+
+func TestDiskBench(t *testing.T) {
+	filename := path.Join(os.TempDir(), "tmp.dat")
+
+	if result, err := StartDiskBench(filename); err != nil {
+		t.Fatal(err)
+	} else {
+		fmt.Println("Disk Result:", result)
+	}
 }

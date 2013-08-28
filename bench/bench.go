@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"os"
 	"time"
 )
 
@@ -78,5 +79,21 @@ func StartServerBW(hostport string, target io.Writer) (BWBenchResult, error) {
 	}
 	duration := time.Since(start)
 
+	return BWBenchResult{start, duration, bwBenchNumBytes}, nil
+}
+
+func StartDiskBench(filename string) (BWBenchResult, error) {
+	f, err := os.Create(filename)
+	if err != nil {
+		return BWBenchResult{}, err
+	}
+	defer f.Close()
+
+	start := time.Now()
+	if _, err := io.CopyN(f, rand.Reader, bwBenchNumBytes); err != nil {
+		return BWBenchResult{}, err
+	}
+
+	duration := time.Since(start)
 	return BWBenchResult{start, duration, bwBenchNumBytes}, nil
 }
