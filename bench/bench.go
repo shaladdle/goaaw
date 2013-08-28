@@ -9,6 +9,8 @@ import (
 	"time"
 )
 
+var DevNull io.Writer = mywriter{}
+
 type mywriter struct{}
 
 func (mywriter) Write(p []byte) (int, error) {
@@ -56,7 +58,7 @@ func StartClientBW(hostport string) (BWBenchResult, error) {
 
 // StartServerBW listens on the specified hostport for a client connection,
 // reads the data coming through, and measures how long it took to receive.
-func StartServerBW(hostport string) (BWBenchResult, error) {
+func StartServerBW(hostport string, target io.Writer) (BWBenchResult, error) {
 	l, err := net.Listen("tcp", hostport)
 	if err != nil {
 		return BWBenchResult{}, err
@@ -70,7 +72,7 @@ func StartServerBW(hostport string) (BWBenchResult, error) {
 	defer conn.Close()
 
 	start := time.Now()
-	_, err = io.CopyN(mywriter{}, conn, bwBenchNumBytes)
+	_, err = io.CopyN(target, conn, bwBenchNumBytes)
 	if err != nil {
 		return BWBenchResult{}, err
 	}

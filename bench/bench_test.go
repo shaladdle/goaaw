@@ -16,7 +16,7 @@ func TestBWBench(t *testing.T) {
 
 	srvResult := make(chan bwresult)
 	go func() {
-		result, err := StartServerBW(hostport)
+		result, err := StartServerBW(hostport, mywriter{})
 		srvResult <- bwresult{result, err}
 	}()
 

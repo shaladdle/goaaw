@@ -3,16 +3,35 @@ package main
 import (
 	"flag"
 	"fmt"
+	"os"
 
 	"aaw/bench"
 )
 
-var addr = flag.String("addr", "localhost:8000", "")
+var (
+	addr  = flag.String("addr", "localhost:8000", "")
+	fname = flag.String("fname", "", "")
+)
 
 func main() {
 	flag.Parse()
 
-	result, err := bench.StartServerBW(*addr)
+	var (
+		result bench.BWBenchResult
+		err    error
+	)
+	switch *fname {
+	case "":
+		result, err = bench.StartServerBW(*addr, bench.DevNull)
+	default:
+		f, err := os.Create(*fname)
+		if err != nil {
+			fmt.Println("Error opening file:", err)
+			return
+		}
+		defer f.Close()
+		result, err = bench.StartServerBW(*addr, f)
+	}
 	if err != nil {
 		fmt.Println("Error:", err)
 		return
