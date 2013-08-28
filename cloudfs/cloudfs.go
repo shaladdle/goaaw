@@ -13,9 +13,17 @@ import (
 	"github.com/hanwen/go-fuse/fuse/pathfs"
 )
 
+// Internal directory names
 const (
 	metaName    = "meta"
 	stagingName = "staging"
+)
+
+// Xattr used for indicating whether something is big or not and the value
+// that is saved in the actual attr.
+const (
+	xAttrBigName       = "isBig"
+	xAttrBigValue byte = 1
 )
 
 type cloudFileSystem struct {
@@ -110,7 +118,13 @@ func (fs *cloudFileSystem) Unlink(name string, context *fuse.Context) fuse.Statu
 }
 
 func (fs *cloudFileSystem) GetXAttr(name string, attribute string, context *fuse.Context) (data []byte, code fuse.Status) {
-	panic("not implemented")
+	if attribute == xAttrBigName {
+		return nil, fuse.ToStatus(fmt.Errorf("%s is a reserved attribute name", attribute))
+	}
+
+	// TODO: I think this might not be good... Probably need to mount the meta
+	// filesystem and then make calls using stdlib funcs.
+	return fs.meta.GetXAttr(name, attribute, context)
 }
 
 func (fs *cloudFileSystem) ListXAttr(name string, context *fuse.Context) (attributes []string, code fuse.Status) {
