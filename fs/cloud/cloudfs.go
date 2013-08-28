@@ -6,11 +6,11 @@ import (
 	"os"
 	"path"
 
-	"aaw/blkstore"
-	"aaw/dedup"
-	"aaw/fs"
-	"aaw/fs/std"
-	anet "aaw/net"
+	"github.com/shaladdle/goaaw/blkstore"
+	"github.com/shaladdle/goaaw/dedup"
+	"github.com/shaladdle/goaaw/fs"
+	"github.com/shaladdle/goaaw/fs/std"
+	anet "github.com/shaladdle/goaaw/net"
 )
 
 func hashStr(hash []byte) string { return fmt.Sprintf("%02x", hash) }

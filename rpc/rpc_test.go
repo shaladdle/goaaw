@@ -7,7 +7,7 @@ import (
 	"sync"
 	"testing"
 
-	anet "aaw/net"
+	anet "github.com/shaladdle/goaaw/net"
 )
 
 // testServer is the type used as the server side of the RPC connection. This

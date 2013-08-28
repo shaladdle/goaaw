@@ -1,7 +1,7 @@
 package client
 
 import (
-	"aaw/sync/remote/common"
+	"github.com/shaladdle/goaaw/sync/remote/common"
 )
 
 func (cli *client) Get(id string) error {

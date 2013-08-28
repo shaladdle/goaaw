@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"aaw/bench"
+	"github.com/shaladdle/goaaw/bench"
 )
 
 var (

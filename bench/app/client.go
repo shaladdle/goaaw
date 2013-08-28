@@ -4,7 +4,7 @@ import (
 	"flag"
 	"fmt"
 
-	"aaw/bench"
+	"github.com/shaladdle/goaaw/bench"
 )
 
 var addr = flag.String("addr", "localhost:8000", "")

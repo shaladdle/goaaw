@@ -6,7 +6,7 @@ import (
 	"os"
 	"path"
 
-	"aaw/rpc"
+	"github.com/shaladdle/goaaw/rpc"
 )
 
 const (

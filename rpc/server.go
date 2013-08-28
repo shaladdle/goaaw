@@ -9,7 +9,7 @@ import (
 	"reflect"
 	"strings"
 
-	anet "aaw/net"
+	anet "github.com/shaladdle/goaaw/net"
 )
 
 const ErrNil = StrError("")

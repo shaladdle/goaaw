@@ -1,7 +1,7 @@
 package local
 
 import (
-	"aaw/sync/remote"
+	"github.com/shaladdle/goaaw/sync/remote"
 	"fmt"
 	"io"
 	"os"

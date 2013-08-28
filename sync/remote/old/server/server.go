@@ -1,7 +1,7 @@
 package server
 
 import (
-	"aaw/sync/remote/common"
+	"github.com/shaladdle/goaaw/sync/remote/common"
 	"net"
 	"os"
 	"path"

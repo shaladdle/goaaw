@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"testing"
 
-	"aaw/testutil"
+	"github.com/shaladdle/goaaw/testutil"
 )
 
 func newMemCache(maxSize int64) BlkCache {
