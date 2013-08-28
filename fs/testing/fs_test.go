@@ -10,13 +10,13 @@ import (
 	"os"
 	"testing"
 
-	"aaw/blkstore"
-	"aaw/fs"
-	"aaw/fs/cloud"
-	"aaw/fs/remote"
-	"aaw/fs/std"
-	"aaw/fs/util"
-	"aaw/testutil"
+	"github.com/shaladdle/goaaw/blkstore"
+	"github.com/shaladdle/goaaw/fs"
+	"github.com/shaladdle/goaaw/fs/cloud"
+	"github.com/shaladdle/goaaw/fs/remote"
+	"github.com/shaladdle/goaaw/fs/std"
+	"github.com/shaladdle/goaaw/fs/util"
+	"github.com/shaladdle/goaaw/testutil"
 )
 
 type testInfo struct {

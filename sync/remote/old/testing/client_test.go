@@ -1,11 +1,11 @@
 package testing
 
 import (
-	"aaw/sync/remote/client"
+	"github.com/shaladdle/goaaw/sync/remote/client"
     "io"
-	"aaw/sync/remote/common"
-	"aaw/sync/remote/server"
-	"aaw/sync/util"
+	"github.com/shaladdle/goaaw/sync/remote/common"
+	"github.com/shaladdle/goaaw/sync/remote/server"
+	"github.com/shaladdle/goaaw/sync/util"
 	"fmt"
     "bytes"
 	"os"

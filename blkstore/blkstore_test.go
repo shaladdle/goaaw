@@ -3,9 +3,9 @@ package blkstore
 import (
 	"testing"
 
-	"aaw/fs/remote"
-	anet "aaw/net"
-	"aaw/testutil"
+	"github.com/shaladdle/goaaw/fs/remote"
+	anet "github.com/shaladdle/goaaw/net"
+	"github.com/shaladdle/goaaw/testutil"
 )
 
 type testCase struct {

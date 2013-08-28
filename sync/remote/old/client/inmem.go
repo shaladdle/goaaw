@@ -1,7 +1,7 @@
 package client
 
 import (
-	"aaw/sync/remote/common"
+	"github.com/shaladdle/goaaw/sync/remote/common"
 	"bytes"
 	"fmt"
 	"io"

@@ -1,8 +1,8 @@
 package blkstore
 
 import (
-	"aaw/fs/remote"
-	anet "aaw/net"
+	"github.com/shaladdle/goaaw/fs/remote"
+	anet "github.com/shaladdle/goaaw/net"
 )
 
 func NewRemoteStore(d anet.Dialer) (BlkStore, error) {

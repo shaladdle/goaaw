@@ -1,7 +1,7 @@
 package common
 
 import (
-	"aaw/sync/util"
+	"github.com/shaladdle/goaaw/sync/util"
 	"fmt"
 	"io"
 	"os"

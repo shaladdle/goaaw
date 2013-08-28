@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"io/ioutil"
 
-	"aaw/fs"
-	"aaw/fs/std"
+	"github.com/shaladdle/goaaw/fs"
+	"github.com/shaladdle/goaaw/fs/std"
 )
 
 type diskstore struct {

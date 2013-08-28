@@ -1,7 +1,7 @@
 package fdcache
 
 import (
-	"aaw/lrucache"
+	"github.com/shaladdle/goaaw/lrucache"
 	"os"
 )
 

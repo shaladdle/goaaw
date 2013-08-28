@@ -1,10 +1,10 @@
 package main
 
 import (
-	"aaw/sync/local"
-	"aaw/sync/remote"
-	"aaw/sync/ui"
-	"aaw/sync/util"
+	"github.com/shaladdle/goaaw/sync/local"
+	"github.com/shaladdle/goaaw/sync/remote"
+	"github.com/shaladdle/goaaw/sync/ui"
+	"github.com/shaladdle/goaaw/sync/util"
 	"bytes"
 	"flag"
 	"fmt"

@@ -7,7 +7,7 @@ import (
 	"net"
 	"os"
 
-	"aaw/rpc"
+	"github.com/shaladdle/goaaw/rpc"
 )
 
 type Index interface {

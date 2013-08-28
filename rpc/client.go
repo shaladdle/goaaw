@@ -6,7 +6,7 @@ import (
 	"net"
 	"reflect"
 
-	anet "aaw/net"
+	anet "github.com/shaladdle/goaaw/net"
 )
 
 type Client struct {

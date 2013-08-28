@@ -5,7 +5,7 @@ import (
 	"path"
 	"testing"
 
-	"aaw/sync/util"
+	"github.com/shaladdle/goaaw/sync/util"
 )
 
 func TestPutGet(t *testing.T) {

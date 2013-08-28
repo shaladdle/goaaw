@@ -5,9 +5,9 @@ import (
 	"io"
 	"os"
 
-	"aaw/fs/util"
-	anet "aaw/net"
-	"aaw/rpc"
+	"github.com/shaladdle/goaaw/fs/util"
+	anet "github.com/shaladdle/goaaw/net"
+	"github.com/shaladdle/goaaw/rpc"
 )
 
 type closeWrapper struct {
