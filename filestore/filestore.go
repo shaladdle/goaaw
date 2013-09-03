@@ -1,4 +1,4 @@
-// Package fs defines the basic filesystem interface.
+// Package fs defines the basic filestore interface.
 package fs
 
 import (
@@ -6,10 +6,9 @@ import (
 	"os"
 )
 
-// FileSystem defines the basic interface of a filesystem. In the future this
-// should be usable as with FUSE, so things like permissions will need to be
-// added.
-type FileSystem interface {
+// FileSystem defines the basic interface of a file store. This is meant to be
+// a simple streaming interface, instead of a full blown file system.
+type FileStore interface {
 	// Open a file for reading. Errors if the file doesn't exist.
 	//
 	// Note: Currently this is limited compared to normal file systems. You

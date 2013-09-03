@@ -1,7 +1,5 @@
 package testing
 
-// TODO: Get in memory file system working
-
 import (
 	"bytes"
 	"crypto/sha1"
@@ -10,35 +8,24 @@ import (
 	"os"
 	"testing"
 
-	"github.com/shaladdle/goaaw/blkstore"
-	"github.com/shaladdle/goaaw/fs"
-	"github.com/shaladdle/goaaw/fs/cloud"
-	"github.com/shaladdle/goaaw/fs/remote"
-	"github.com/shaladdle/goaaw/fs/std"
-	"github.com/shaladdle/goaaw/fs/util"
+	"github.com/shaladdle/goaaw/filestore"
+	"github.com/shaladdle/goaaw/filestore/remote"
+	"github.com/shaladdle/goaaw/filestore/std"
+	"github.com/shaladdle/goaaw/filestore/util"
 	"github.com/shaladdle/goaaw/testutil"
 )
 
 type testInfo struct {
 	name  string
-	setup func(*testing.T) (fs.FileSystem, func(), error)
-}
-
-func newCloudTest(cacheSize int64) testInfo {
-	return testInfo{"cloud", func(t *testing.T) (fs.FileSystem, func(), error) {
-		te := testutil.NewTestEnv("testcase-cloud", t)
-		staging := std.New(te.Root())
-		cl := cloud.NewFileSystem(staging, blkstore.NewMemStore(), blkstore.NewMemStore(), cacheSize)
-		return cl, func() { te.Teardown() }, nil
-	}}
+	setup func(*testing.T) (fs.FileStore, func(), error)
 }
 
 var tests = []testInfo{
-	{"std", func(t *testing.T) (fs.FileSystem, func(), error) {
+	{"std", func(t *testing.T) (fs.FileStore, func(), error) {
 		te := testutil.NewTestEnv("testcase-stdfs", t)
 		return std.New(te.Root()), func() { te.Teardown() }, nil
 	}},
-	{"remote", func(t *testing.T) (fs.FileSystem, func(), error) {
+	{"remote", func(t *testing.T) (fs.FileStore, func(), error) {
 		const hostport = "localhost:9000"
 
 		te := testutil.NewTestEnv("testcase-net-remotefs", t)
@@ -61,9 +48,6 @@ var tests = []testInfo{
 
 		return cli, cleanup, nil
 	}},
-	newCloudTest(0),
-	//newCloudTest(testutil.KB),
-	//newCloudTest(100 * testutil.KB),
 }
 
 func checkFileInfo(t *testing.T, testName string, got, want os.FileInfo) {
@@ -225,7 +209,8 @@ func TestTouchRemove(t *testing.T) {
 }
 
 // TestGetFiles creates some files in a test directory and verifies that
-// GetFiles lists them when called.
+// GetFiles lists them when called. The files returned do *not* have to be in
+// any particular order.
 func TestGetFiles(t *testing.T) {
 	testBody := func(i int, ti testInfo) {
 		fs, cleanup, err := ti.setup(t)
@@ -243,15 +228,20 @@ func TestGetFiles(t *testing.T) {
 			}
 		}
 
-		wants := []util.FileInfo{
+		wantSlice := []util.FileInfo{
 			newInfo("file1"),
 			newInfo("file2"),
 			newInfo("file3"),
 			newInfo("file4"),
 		}
 
-		for _, fname := range wants {
-			f, err := fs.Create(fname.Name())
+		wantMap := make(map[string]util.FileInfo)
+		for _, info := range wantSlice {
+			wantMap[info.Name()] = info
+		}
+
+		for _, info := range wantSlice {
+			f, err := fs.Create(info.Name())
 			if err != nil {
 				t.Errorf("test %v: test initialization: %v", ti.name, err)
 				continue
@@ -266,13 +256,25 @@ func TestGetFiles(t *testing.T) {
 			return
 		}
 
-		if ilen, flen := len(infos), len(wants); ilen != flen {
+		if ilen, flen := len(infos), len(wantSlice); ilen != flen {
 			t.Errorf("test %v: GetFiles returned list of length %v, want length %v", ti.name, ilen, flen)
 			return
 		}
 
-		for i, got := range infos {
-			checkFileInfo(t, ti.name, got, wants[i])
+		checked := make(map[string]bool)
+		for _, got := range infos {
+			if want, ok := wantMap[got.Name()]; ok {
+				checked[got.Name()] = true
+				checkFileInfo(t, ti.name, got, want)
+			} else {
+				t.Errorf("GetFiles returned a file that shouldn't exist: %v", got.Name())
+			}
+		}
+
+		for _, info := range wantSlice {
+			if !checked[info.Name()] {
+				t.Errorf("file %v should exist but was not listed by GetFiles", info.Name())
+			}
 		}
 	}
 

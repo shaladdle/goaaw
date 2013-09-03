@@ -1,7 +1,7 @@
 package blkstore
 
 import (
-	"github.com/shaladdle/goaaw/fs/remote"
+	"github.com/shaladdle/goaaw/filestore/remote"
 	anet "github.com/shaladdle/goaaw/net"
 )
 

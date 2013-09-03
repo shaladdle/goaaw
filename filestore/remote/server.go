@@ -4,8 +4,8 @@ import (
 	"io"
 	"net"
 
-	"github.com/shaladdle/goaaw/fs/std"
-	"github.com/shaladdle/goaaw/fs/util"
+	"github.com/shaladdle/goaaw/filestore/std"
+	"github.com/shaladdle/goaaw/filestore/util"
 	anet "github.com/shaladdle/goaaw/net"
 	"github.com/shaladdle/goaaw/rpc"
 )
