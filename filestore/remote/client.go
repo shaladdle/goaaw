@@ -5,7 +5,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/shaladdle/goaaw/fs/util"
+	"github.com/shaladdle/goaaw/filestore/util"
 	anet "github.com/shaladdle/goaaw/net"
 	"github.com/shaladdle/goaaw/rpc"
 )
