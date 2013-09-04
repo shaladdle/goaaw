@@ -5,7 +5,7 @@ import (
 	"path"
 	"time"
 
-	remotestore "github.com/shaladdle/goaaw/fs/remote"
+	remotestore "github.com/shaladdle/goaaw/filestore/remote"
 	anet "github.com/shaladdle/goaaw/net"
 
 	"github.com/hanwen/go-fuse/fuse"
