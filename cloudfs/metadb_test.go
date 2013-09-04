@@ -64,6 +64,15 @@ func TestMetaDB(t *testing.T) {
 		} else if got != want {
 			t.Errorf("got %v, want %v", got, want)
 		}
+
+		if err := m.Remove(key); err != nil {
+			t.Errorf("remove error: %v", err)
+		}
+
+		// Make sure remove was successful.
+		if _, err := m.IsBig(key); err == nil {
+			t.Errorf("item exists, after it was removed")
+		}
 	}
 
 	for _, test := range tests {
