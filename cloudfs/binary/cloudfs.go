@@ -11,7 +11,7 @@ import (
 )
 
 var (
-	root  = flag.String("root", "./cloudfs-internal", "Root directory for cloudfs data structures")
+	data  = flag.String("data", "./cloudfs-internal", "Data directory for cloudfs internal structures")
 	raddr = flag.String("remote", "localhost:9000", "IP address of remote storage")
 	mnt   = flag.String("mnt", "./cloudfs", "Mount point for the filesystem")
 )
@@ -19,7 +19,7 @@ var (
 func main() {
 	flag.Parse()
 
-	fs, err := cloudfs.New(*root, *raddr)
+	fs, err := cloudfs.New(*data, *raddr)
 	if err != nil {
 		log.Fatal("Cloudfs initialization error: ", err)
 	}
