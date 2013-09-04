@@ -2,12 +2,13 @@ package cloudfs
 
 import (
 	"fmt"
+	"log"
 	"path"
 	"time"
 
 	"github.com/shaladdle/goaaw/cloudfs/metastore"
 	remotestore "github.com/shaladdle/goaaw/filestore/remote"
-	anet "github.com/shaladdle/goaaw/net"
+	//anet "github.com/shaladdle/goaaw/net"
 
 	"github.com/hanwen/go-fuse/fuse"
 	"github.com/hanwen/go-fuse/fuse/nodefs"
@@ -32,23 +33,11 @@ type cloudFileSystem struct {
 }
 
 func New(root, hostport string) (pathfs.FileSystem, error) {
-	meta := pathfs.NewLoopbackFileSystem(path.Join(root, metaName))
-	staging := pathfs.NewLoopbackFileSystem(path.Join(root, stagingName))
-
-	remote, err := remotestore.NewClient(anet.TCPDialer(hostport))
-	if err != nil {
-		return nil, err
-	}
-
-	metadb, err := metastore.NewMetaDB(root)
-
 	return &cloudFileSystem{
 		root:     root,
 		hostport: hostport,
-		metadb:   metadb,
-		meta:     meta,
-		staging:  staging,
-		remote:   remote,
+		meta:     pathfs.NewLoopbackFileSystem(path.Join(root, metaName)),
+		staging:  pathfs.NewLoopbackFileSystem(path.Join(root, stagingName)),
 	}, nil
 }
 
@@ -125,9 +114,25 @@ func (fs *cloudFileSystem) SetXAttr(name string, attr string, data []byte, flags
 }
 
 func (fs *cloudFileSystem) OnMount(nodeFs *pathfs.PathNodeFs) {
+	// TODO: Add remote initialization when that's ready
+	/*
+		remote, err := remotestore.NewClient(anet.TCPDialer(hostport))
+		if err != nil {
+			return nil, err
+		}
+	*/
+
 	if err := initLocal(fs.root); err != nil {
-		panic(err)
+		log.Fatal("Error initializing private dir: ", err)
 	}
+
+	metadb, err := metastore.NewMetaDB(fs.root)
+	if err != nil {
+		log.Fatal("Error instantiating MetaDB: ", err)
+	}
+
+	fs.metadb = metadb
+	//fs.remote = remote
 }
 
 func (fs *cloudFileSystem) OnUnmount() {
