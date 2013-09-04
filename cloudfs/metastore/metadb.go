@@ -1,4 +1,4 @@
-package cloudfs
+package metastore
 
 import (
 	"database/sql"
@@ -8,21 +8,24 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
+const isbigTableName = "isbig"
+
 const sqliteDBName = "cloudfs.sqlite"
 
-type metaStore interface {
+type MetaStore interface {
 	IsBig(key string) (bool, error)
 	SetBig(key string, value bool) error
 	Remove(key string) error
+	Close() error
 }
 
-type memMetaStore map[string]bool
+type inMem map[string]bool
 
-func newMemMetaStore() metaStore {
-	return memMetaStore(make(map[string]bool))
+func NewInMem() MetaStore {
+	return inMem(make(map[string]bool))
 }
 
-func (m memMetaStore) IsBig(key string) (bool, error) {
+func (m inMem) IsBig(key string) (bool, error) {
 	ret, exists := m[key]
 	if !exists {
 		return false, fmt.Errorf("key %v does not exist", key)
@@ -31,13 +34,17 @@ func (m memMetaStore) IsBig(key string) (bool, error) {
 	return ret, nil
 }
 
-func (m memMetaStore) SetBig(key string, value bool) error {
+func (m inMem) SetBig(key string, value bool) error {
 	m[key] = value
 	return nil
 }
 
-func (m memMetaStore) Remove(key string) error {
+func (m inMem) Remove(key string) error {
 	delete(m, key)
+	return nil
+}
+
+func (inMem) Close() error {
 	return nil
 }
 
@@ -45,19 +52,45 @@ type metadb struct {
 	db *sql.DB
 }
 
-func createMetaDb(dpath string) (string, error) {
-	fpath := path.Join(dpath, sqliteDBName)
+func CheckMetaDB(dpath string) error {
+	db, err := sql.Open("sqlite3", getDBPath(dpath))
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	var tableName string
+	row := db.QueryRow("select name from sqlite_master where type='table'")
+	if err := row.Scan(&tableName); err != nil {
+		return err
+	}
+
+	if tableName != isbigTableName {
+		return fmt.Errorf("table %v unexpected, wanted table %v", tableName, isbigTableName)
+	}
+
+	return nil
+}
+
+func getDBPath(dpath string) string {
+	return path.Join(dpath, sqliteDBName)
+}
+
+func CreateMetaDB(dpath string) (string, error) {
+	fpath := getDBPath(dpath)
 	db, err := sql.Open("sqlite3", fpath)
 	if err != nil {
 		return "", err
 	}
 	defer db.Close()
 
-	_, err = db.Exec("create table isbig (fkey char(40) primary key, big boolean)")
+	_, err = db.Exec(fmt.Sprintf("create table %v (fkey char(40) primary key, big boolean)",
+		isbigTableName))
+
 	return fpath, err
 }
 
-func newMetaDB(fpath string) (metaStore, error) {
+func NewMetaDB(fpath string) (MetaStore, error) {
 	db, err := sql.Open("sqlite3", fpath)
 	if err != nil {
 		return nil, err

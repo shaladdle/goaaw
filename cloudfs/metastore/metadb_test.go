@@ -1,4 +1,4 @@
-package cloudfs
+package metastore
 
 import (
 	"fmt"
@@ -9,14 +9,14 @@ import (
 
 type metaDBTest struct {
 	name  string
-	setup func() (metaStore, func(), error)
+	setup func() (MetaStore, func(), error)
 }
 
 var tests = []metaDBTest{
-	{"inmem", func() (metaStore, func(), error) {
-		return newMemMetaStore(), func() {}, nil
+	{"inmem", func() (MetaStore, func(), error) {
+		return NewInMem(), func() {}, nil
 	}},
-	{"sqlite", func() (metaStore, func(), error) {
+	{"sqlite", func() (MetaStore, func(), error) {
 		dir := path.Join(os.TempDir(), "metadbtest")
 		if err := os.MkdirAll(dir, 0755); err != nil {
 			return nil, nil, fmt.Errorf("error creating tmp dir %s: %v", dir, err)
@@ -24,17 +24,17 @@ var tests = []metaDBTest{
 
 		cleanup := func() { os.RemoveAll(dir) }
 
-		fpath, err := createMetaDb(dir)
+		fpath, err := CreateMetaDB(dir)
 		if err != nil {
 			return nil, cleanup, fmt.Errorf("error setting up metadb: %v", err)
 		}
 
-		m, err := newMetaDB(fpath)
+		m, err := NewMetaDB(fpath)
 		return m, cleanup, err
 	}},
 }
 
-func TestMetaDB(t *testing.T) {
+func TestMetaStoreEndToEnd(t *testing.T) {
 	testFunc := func(test metaDBTest) {
 		m, cleanup, err := test.setup()
 		if err != nil {
@@ -77,5 +77,34 @@ func TestMetaDB(t *testing.T) {
 
 	for _, test := range tests {
 		testFunc(test)
+	}
+}
+
+func TestMetaDBCheckerNoDB(t *testing.T) {
+	dir := path.Join(os.TempDir(), "TestMetaDBCheckerNoDB")
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		t.Errorf("error creating tmp dir %s: %v", dir, err)
+	}
+	defer os.RemoveAll(dir)
+
+	if err := CheckMetaDB(path.Join(dir, sqliteDBName)); err == nil {
+		t.Errorf("should get 'unable top open file' error")
+	}
+}
+
+func TestMetaDBCheckerTableOk(t *testing.T) {
+	dir := path.Join(os.TempDir(), "TestMetaDBCheckerTableOk")
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		t.Errorf("error creating tmp dir %s: %v", dir, err)
+	}
+	defer os.RemoveAll(dir)
+
+	_, err := CreateMetaDB(dir)
+	if err != nil {
+		t.Errorf("error in CreateMetaDB: %v", err)
+	}
+
+	if err := CheckMetaDB(dir); err != nil {
+		t.Errorf("error in CheckMetaDB: %v", err)
 	}
 }
