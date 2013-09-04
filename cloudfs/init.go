@@ -16,7 +16,7 @@ func checkLocal(dpath string) error {
 	return nil
 }
 
-func (fs *cloudFileSystem) initLocal(dpath string) error {
+func initLocal(dpath string) error {
 	if err := checkLocal(dpath); err == nil {
 		return nil
 	}

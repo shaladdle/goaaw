@@ -40,9 +40,12 @@ func New(root, hostport string) (pathfs.FileSystem, error) {
 		return nil, err
 	}
 
+	metadb, err := metastore.NewMetaDB(root)
+
 	return &cloudFileSystem{
 		root:     root,
 		hostport: hostport,
+		metadb:   metadb,
 		meta:     meta,
 		staging:  staging,
 		remote:   remote,
@@ -122,6 +125,9 @@ func (fs *cloudFileSystem) SetXAttr(name string, attr string, data []byte, flags
 }
 
 func (fs *cloudFileSystem) OnMount(nodeFs *pathfs.PathNodeFs) {
+	if err := initLocal(fs.root); err != nil {
+		panic(err)
+	}
 }
 
 func (fs *cloudFileSystem) OnUnmount() {
