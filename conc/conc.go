@@ -1,8 +1,6 @@
 package conc
 
 import (
-    "fmt"
-
     "github.com/shaladdle/goaaw/container"
 )
 
@@ -67,7 +65,6 @@ type Handler func(interface{}) error
 // HandleValue handles Error and Close cases from 'in' by just propagating them
 // to 'out'. For the Value case, it calls valueHandler with the popped value.
 func Propagate(in ConsumerChan, out ProducerChan, valueHandler Handler) {
-    defer fmt.Println("propagate finished")
     for {
         tag, data := in.Pop()
         switch tag {
@@ -87,7 +84,6 @@ func Propagate(in ConsumerChan, out ProducerChan, valueHandler Handler) {
 }
 
 func Finish(in ConsumerChan, valueHandler Handler) error {
-    defer fmt.Println("finish finished")
     for {
         tag, data := in.Pop()
         switch tag {
@@ -122,7 +118,6 @@ func newMultiConsumerChan(in ConsumerChan, fanout int) *multiConsumerChan {
 }
 
 func (mcc *multiConsumerChan) director() {
-    defer fmt.Println("mcc done")
     for {
         // For every pop request from one of our consumers, we'll pop off the
         // root consumer, and send that as a reply. If the thing we popped was
@@ -135,10 +130,8 @@ func (mcc *multiConsumerChan) director() {
         // If we get a Close or Error, just wait until all consumers depending
         // on me have been notified, and then return.
         if tag == Error || tag == Close {
-            fmt.Println("notified one thread:", tag)
             for i := mcc.fanout - 1; i > 0; i-- {
                 (<-mcc.pop) <- se
-                fmt.Println("notified one thread:", tag)
             }
             return
         }
