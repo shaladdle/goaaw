@@ -31,6 +31,32 @@ type kvpair struct {
 	value interface{}
 }
 
+type putMsg struct{
+    key interface{}
+    value interface{}
+    ack chan bool
+}
+
+type getMsg struct{
+    key interface{}
+    value chan interface{}
+}
+
+type delMsg struct{
+    key interface{}
+    ack chan bool
+}
+
+func (p *kvstore) director() {
+    for {
+        switch msg := (<-p.msgs).(type) {
+        case getMsg:
+        case putMsg:
+        case delMsg:
+        }
+    }
+}
+
 func (p *kvstore) decodeStream(dec Decoder) <-chan interface{} {
 	ch := make(chan interface{})
 	go func() {

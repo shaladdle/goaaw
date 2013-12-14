@@ -121,39 +121,20 @@ func (p *kvstore) logManager(msgs chan interface{}) {
 		panic(err)
 	}
 
-    appMsgs := make(chan interface{})
-    go p.logAppender(appMsgs, msgs)
+    appender := func(manMsgs chan<- interface{}) {
+        // append new data to the end of the log
+        manMsgs <- logManAppended(100)
+    }
 
-    cmtMsgs := make(chan interface{})
-    go p.logCommitter(cmtMsgs)
+    appending := false
+    committing := false
 
 	for {
 		switch msg := (<-msgs).(type) {
-		case logManWrite:
-            appMsgs <- appWrite(msg)
         case logManAppended:
             // also need to notify kvstore at large that it's ok to insert
             // this into the in-mem cache?
-
-            // Tell the committer it can go ahead
-            cmtMsgs <- cmtSetLimit(msg)
 		case logManShutdown:
-            // TODO: Really need some kind of check to see if we are done or
-            // not. Either an 'appending' flag, or, keep track of the appended
-            // and committed ids.
-            ch1 := make(chan uint64)
-            appMsgs <- appShutdown(ch1)
-            <-ch1
-
-            // TODO: The limit passed here should commit anything remaining.
-            // We wait for the commit to finish, and then shut down ourselves.
-            ch := make(chan bool)
-            cmtMsgs <- cmtSetLimit(100)
-            cmtMsgs <- cmtShutdown(ch)
-            <-ch
-
-            msg <- true
-
             break
 		}
 	}
