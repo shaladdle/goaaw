@@ -8,7 +8,6 @@ import (
 
 	"github.com/shaladdle/goaaw/cloudfs/metastore"
 	remotestore "github.com/shaladdle/goaaw/filestore/remote"
-	//anet "github.com/shaladdle/goaaw/net"
 
 	"github.com/hanwen/go-fuse/fuse"
 	"github.com/hanwen/go-fuse/fuse/nodefs"
@@ -29,7 +28,7 @@ type cloudFileSystem struct {
 	metadb  metastore.MetaStore
 	meta    pathfs.FileSystem
 	staging pathfs.FileSystem
-	remote  *remotestore.Client
+	remote  blkstore.BlkStore
 }
 
 func New(root, hostport string) (pathfs.FileSystem, error) {
@@ -38,6 +37,7 @@ func New(root, hostport string) (pathfs.FileSystem, error) {
 		hostport: hostport,
 		meta:     pathfs.NewLoopbackFileSystem(path.Join(root, metaName)),
 		staging:  pathfs.NewLoopbackFileSystem(path.Join(root, stagingName)),
+        remote:   blkstore.NewMemStore()
 	}, nil
 }
 
@@ -138,8 +138,41 @@ func (fs *cloudFileSystem) OnMount(nodeFs *pathfs.PathNodeFs) {
 func (fs *cloudFileSystem) OnUnmount() {
 }
 
+func (fs *cloudFileSystem) fileExists(name string) bool {
+    return false
+}
+
+func (fs *cloudFileSystem) fileIsBig(name string) bool {
+    return false
+}
+
+func (fs *cloudFileSystem) readFileMetadata(name string) (interface{}, error) {
+    return nil, fmt.Errorf("NOT IMPLEMENTED")
+}
+
 func (fs *cloudFileSystem) Open(name string, flags uint32, context *fuse.Context) (file nodefs.File, code fuse.Status) {
-	return fs.meta.Open(name, flags, context)
+    return fs.meta.Open(name, flags, context)
+    /*
+    if !fs.fileExists(name) {
+        // The file doesn't exist yet, so the right thing to do is just return
+        // f and status as they are.
+        // TODO: Should these kinds of files go in the map?
+        return fs.meta.Open(name, flags, context)
+    } else if _, ok := openFiles[name]; ok {
+        // If the file is open (check using some kind of hash table) we will
+        // update some kind of reference count.
+    } else if fs.fileIsBig(name) {
+        // The file is not open and it's a big file, so we want to reconstruct the file by
+        // downloading its blocks to a file in the scratch directory.
+        info, err := fs.readFileMetadata(name)
+        if err != nil {
+            return 
+        }
+    } else {
+        // The file is small and it's not already open, so we just open it.
+        return fs.meta.Open(name, flags, context)
+    }
+    */
 }
 
 func (fs *cloudFileSystem) Create(name string, flags uint32, mode uint32, context *fuse.Context) (file nodefs.File, code fuse.Status) {
